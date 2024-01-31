@@ -125,7 +125,7 @@
 - **준영속(detached)**
   - 영속성 컨텍스트에 저장되었다가 분리된 상태(영속 → 준영속)
   - 영속성 컨텍스트가 제공하는 기능 사용 불가
-  - em.detach(entity), em.clear(),  em.close()
+  - ```em.detach(entity)```, ```em.clear()```,  ```em.close()```
 - **삭제(removed)**
   - 삭제된 상태
 - **플러시 (flush)**
@@ -133,14 +133,14 @@
   - 영속성 컨텍스트를 비우지 않음
   - 변경 감지 → 수정된 엔티티 쓰기 지연 SQL 저장소에 등록 → 데이터베이스에 전송
   - 영속성 컨텍스트를 플러시하는 방법
-    - em.flush() : 직접 호출
+    - ```em.flush()``` : 직접 호출
     - 트랜잭션 커밋, JPQL 쿼리 실행 : 자동 호출
 
 ## Entity Mapping
-- 객체 - 테이블 : @Entity, @Table
-- 필드 - 컬럼 : @Column
-- 기본키 : @Id
-- 연관관계 : @ManyToOne, @JoinColum
+- 객체 - 테이블 : ```@Entity```, ```@Table```
+- 필드 - 컬럼 : ```@Column```
+- 기본키 : ```@Id```
+- 연관관계 : ```@ManyToOne```, ```@JoinColum```
 
 ### @Entity
 - JPA가 관리하는 Entity
@@ -149,16 +149,16 @@
   - final 클래스, enum, interface, inner 클래스 사용 X
   - 저장할 필드에 final 사용 X
 - 속성
-  - @Entity(name = "entity")
+  - ```@Entity(name = "entity")```
     - JPA에서 사용할 엔티티 이름 지정
     - 기본값 : 클래스 이름 그대로 사용
     - 같은 클래스 이름이 없으면 가급적 기본값 사용할 것
-  - @Table(name = "TABLE_NAME") : 매핑할 테이블 이름
-  - @Table(catalog = "CATALOG") : 데이터베이스 catalog 매핑
-  - @Table(schema = "SCHEMA") : 데이터베이스 schema 매핑
-  - @Table(uniqueConstraints = {@UniqueCpnstraint( name = "LOGIN_ID_UNIQUE", columnNames = {"LOGIN_ID"} )}) : DDL 생성 시 유니크 제약 조건 생성
+  - ```@Table(name = "TABLE_NAME")``` : 매핑할 테이블 이름
+  - ```@Table(catalog = "CATALOG")``` : 데이터베이스 catalog 매핑
+  - ```@Table(schema = "SCHEMA")``` : 데이터베이스 schema 매핑
+  - ```@Table(uniqueConstraints = {@UniqueCpnstraint( name = "LOGIN_ID_UNIQUE", columnNames = {"LOGIN_ID"} )})``` : DDL 생성 시 유니크 제약 조건 생성
 
-## 데이터베이스 스키마 자동 생성
+### 데이터베이스 스키마 자동 생성
 - DDL을 애플리케이션 실행 시점에 자동 생성
 - 테이블 중심 → 객체 중심
 - 데이터베이스 방언 활용하여 데이터베이스에 맞는 적절한 DDL 생성
@@ -177,11 +177,63 @@
   
 ### DDL 생성 기능
 - 제약조건 추가
-  - @Colum(name = "LOGIN_ID", unique = true, nullable = false, length = 10)
+  - ```@Colum(name = "LOGIN_ID", unique = true, nullable = false, length = 10)```
     - name
     - unique
     - nullable
     - length
-  - @Table(uniqueConstraints = {@UniqueCpnstraint( name = "LOGIN_ID_UNIQUE", columnNames = {"LOGIN_ID"} )}) : DDL 생성 시 유니크 제약 조건 생성
+  - ```@Table(uniqueConstraints = {@UniqueCpnstraint( name = "LOGIN_ID_UNIQUE", columnNames = {"LOGIN_ID"} )})``` : DDL 생성 시 유니크 제약 조건 생성
     - uniqueConstraints
 - JPA 실행 로직에는 영향 X
+
+### 필드와 컬럼 매핑
+- ```@Column``` : 컬럼 매핑
+  - name : 필드와 매핑할 테이블의 컬럼 이름 (default : 객체의 필드 이름)
+  - insertable, updatable : 등록, 변경 가능 여부 (TRUE)
+  - nullable(DDL) : null 값 허용 여부 설정
+  - unique(DDL) : 한 컬럼에 간단히 유니크 제약조건을 걸 때 사용
+    - 이름을 랜덤으로 붙여서 잘 안씀. uniqueConstraints 사용.
+  - columnDefinition(DDL) : 데이터베이스 컬럼 정보를 직접 줄 수 있음
+    - ex) varchar(100) default 'EMPTY'
+  - length(DDL) : 문자 길이 제약조건, String 타입에만 사용 (255)
+  - precision, scale(DDL) : BigDecimal 타입에서 사용(BigInteger에서도 O)
+    - precision : 소수점 포함 전체 자릿수
+    - scale : 소수 자릿수
+    - double, float 타입 적용 X
+- ```@Enumerated(EnumType.STRING)``` : ENUM 타입 매핑. ***ORDINAL(ENUM 순서) 사용 X***
+- ```@Temporal(TemporalType.DATE/TIME/TIMESTAMP)``` : Date 타입 매핑
+  - Java8 이후 LocalDate, LocalDateTime 사용 시 생략 가능
+- ```@Lob``` : CLOB(매핑하는 필드 타입이 문자일 때), BLOB(나머지) 매핑
+- ```@Transient``` : 매핑 제외(데이터베이스 저장X, 조회X). 메모리 상에서만 임시로 값을 보관할 때.
+
+### 기본키 매핑
+- ```@Id``` : 직접 할당
+- ```@GeneratedValue(strategy = GenerationType.AUTO/IDENTITY/SEQUENCE/TABLE)``` : 자동 생성
+  - IDENTITY : DB에 위임, AUTO_INCREMENT
+    - MYSQL, PostgreSQL, SQL Server에서 사용
+    - em.persist() 시점에 즉시 INSERT SQL 실행하고 이후 ID 값 알 수 있음
+  - SEQUENCE : DB 시퀀스 오브젝트 사용, CREATE SEQUENCE 
+    - ORACLE
+    - ```@SequenceGenerator``` 필요
+      - name : 식별자 생성기 이름(필수)
+      - sequenceName : DB에 등록되어 있는 시퀀스 이름(default : hibernate_sequence)
+      - initialValue : DDL 생성 시에만 사용 (default : 1)
+      - allocationSize : 시퀀스 호출에 증가하는 수 ***(default : 50)***
+      - catalog, schema : DB catalog, schema 이름
+      ```
+      @Entity
+      @SequenceGenerator(
+          name = "TEST_SEQ_GENERATOR",
+          sequenceName = "TEST_SEQ",
+          initialValue = 1, allocationSize = 1)
+      public class test {
+
+        @Id
+        @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "TEST_SEQ_GENERATOR")
+        private Long id;
+      }
+      
+      ```
+  - TABLE : 키 생성용테이블 사용, 모든 DB에서 사용
+    - ```@TableGenerator``` 필요
+  - AUTO : 방언에 따라 자동 지정, 기본값
