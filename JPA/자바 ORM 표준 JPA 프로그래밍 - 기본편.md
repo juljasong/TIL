@@ -219,7 +219,6 @@
       - sequenceName : DB에 등록되어 있는 시퀀스 이름(default : hibernate_sequence)
       - initialValue : DDL 생성 시에만 사용 (default : 1)
       - allocationSize : 시퀀스 호출에 증가하는 수 ***(default : 50)***
-        - 
       - catalog, schema : DB catalog, schema 이름
       ```java
       @Entity
