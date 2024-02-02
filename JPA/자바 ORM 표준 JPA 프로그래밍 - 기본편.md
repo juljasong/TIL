@@ -272,7 +272,7 @@
 
 ## 연관관계 매핑
 ### 단방향 연관관계
-![단방향 연관관계](/images/image.jpg)
+![단방향 연관관계](/JPA/images/image.jpg)
 ```java
   @Entity
   public class Member {
@@ -292,7 +292,7 @@
   }
 ```
 ### 양방향 연관관계
-![양방향 연관관계](/images/image-1.jpg)
+![양방향 연관관계](/JPA/images/image-1.jpg)
 ```java
   @Entity
   public class Team {
