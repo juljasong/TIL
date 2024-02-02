@@ -254,18 +254,101 @@
       }
       
     ```
-  - ```@TableGenerator``` 속성
-    - name : 식별자 생성기 이름
-    - table : 키생성 테이블명
-    - pkColumnName : 시퀀스 컬럼명
-    - valueColumnNa : 시퀀스 값 컬럼명
-    - pkColumnValue : 키로 사용할 값 이름
-    - initialValue : 초기값, 마지막으로 생성된 값 기준
-    - allocationSize : 시퀀스 한 번 호출에 증가하는 수(성능 최적화에 사용)
-    - catalog, schema : 데이터베이스 catalog, schema 이름
-    - uniqueConstraints(DDL) : 유니크 제약 조건 지정
+- ```@TableGenerator``` 속성
+  - name : 식별자 생성기 이름
+  - table : 키생성 테이블명
+  - pkColumnName : 시퀀스 컬럼명
+  - valueColumnNa : 시퀀스 값 컬럼명
+  - pkColumnValue : 키로 사용할 값 이름
+  - initialValue : 초기값, 마지막으로 생성된 값 기준
+  - allocationSize : 시퀀스 한 번 호출에 증가하는 수(성능 최적화에 사용)
+  - catalog, schema : 데이터베이스 catalog, schema 이름
+  - uniqueConstraints(DDL) : 유니크 제약 조건 지정
 
 ### 권장 식별자 전략
 - 기본키 제약 조건 : null 아님, 유일, **변하면 안됨**
 - 미래까지 이 조건을 만족하는 자연키 찾기 어려움 → 대리키(대체키) 사용
 - 권장 : Long + 대체키 + 키 생성 전략 사용
+
+## 연관관계 매핑
+### 단방향 연관관계
+![단방향 연관관계](image.jpg)
+```java
+  @Entity
+  public class Member {
+
+    @Id @GeneratedValue
+    @Column(name = "MEMBER_ID")
+    private Long id;
+
+    @Column(name = "USERNAME")
+    private String username;
+
+    @ManyToOne                        // Member(N) : Team(1)
+    @JoinColumn(name = "TEAM_ID")     // Join 걸 컬럼명
+    private Team team;
+
+    ...
+  }
+```
+### 양방향 연관관계
+![양방향 연관관계](image-1.jpg)
+```java
+  @Entity
+  public class Team {
+
+    @Id @GeneratedValue
+    @Column(name = "TEAM_ID")
+    private Long id;
+
+    private String name;
+
+    @OneToMany(mappedBy = "team") // Member의 team과 매핑
+    private List<Member> members = new ArrayList<>();
+
+    ...
+  }
+```
+#### 연관관계의 주인과 ***mappedBy***
+- 객체와 테이블 간 연관관계를 맺는 차이에 대한 이해
+  - 객체 연관관계 : 2개
+    - 회원 → 팀 (단방향)
+    - 팀 → 회원 (단방향)
+  - 테이블 연관관계 : 1개
+    - 회원 ↔ 팀 (FK)
+- ***연관관계의 주인(Owner)***
+  - 양방향 매핑 규칙
+    - 객체의 두 관계 중 하나를 연관관계의 주인으로 지정
+    - 연관관계의 주인만이 외래 키를 관리(등록, 수정) 
+    - 주인이 아닌 쪽은 읽기만 가능
+    - mappedBy 속성으로 주인 지정 (주인은 mappedBy 속성 지정 X)
+      - 주인
+        - ***외래키가 있는 곳(N)*** (수정 시 업데이트가 이루어져야 할 테이블)
+#### 주의점
+- 자주하는 실수
+  - 연관관계 주인의 값을 입력하지 않음
+  - 순수 객체 상태를 고려하여 양쪽에 값을 넣어주는게 맞음
+  - 연관관계 편의 메소드 생성
+    ```java
+    public void changeTeam(Team team) {
+      this.team = team;
+      // 연관관계 주인의 값 넣을 때 주인이 아닌 쪽도 값을 같이 넣어주는 연관관계 편의 메소드
+      team.getMembers().add(this); 
+    }
+    ```
+    or (상황에 따라 최선이 다름)
+    ```java
+    public void addMember(Member member) {
+      member.setTeam(this);
+      members.add(member);
+    }
+    ```
+  - 양방향 매핑시 무한 루프 조심
+    - toString(), lombok, JSON 생성 라이브러리....
+
+#### 정리
+- 단방향 매핑으로 이미 연관관계 매핑 완료
+- 양방향 매핑은 반대 방향으로 **조회(객체 그래프 탐색) 기능**을 추가하는 것
+- JPQL에서 역방향으로 탐색할 일이 많음
+- 단방향 매핑 잘 하고 양방향은 필요할 때 추가해도 됨(테이블 영향 X)
+- 연관관계의 주인은 비즈니스 로직 기준이 아닌, **외래키의 위치를 기준으로 정해야 함**
