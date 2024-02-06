@@ -426,3 +426,80 @@
   - 실무 사용 X
   - 연결 테이블이 단순 연결만 하고 끝나지 않음
   - 주문시간, 수량 등의 데이터가 추가될 수 있음
+
+### ```@JoinColumn``` 속성
+- name : 매핑할 외래키 이름 (default : 참조하는 테이블의 기본키 컬럼명)
+- referencedColumnName : 외래키가 참조하는 대상 테이블의 컬럼명(default : 참조하는 테이블의 기본키 컬럼명)
+- foreignKey(DDL) : 외래키 제약조건 직정 지정
+- unique, nullable, insertable, updatable, columnDefinition, table : ```@Column```과 동일
+
+### ```@ManyToOne```(일대다) 주요 속성 
+- optional : false로 설정하면 연관된 엔티티가 항상 있어야 함(default : TRUE)
+- fetch : 글로벌 페치 전략 설정
+  - ```@ManyToOne=FetchType.EAGER```
+- cascade : 영속성 전이 기능 사용
+- targetEntity : 연관된 엔티티의 타입 정보 설정. 거의 사용X
+
+### ```@OneToMany```(다대일) 주요 속성
+- mappedBy : 연관관계의 주인 필드 선택
+- fetch : 글로벌 페치 전략 설정
+  - ```@OneToMany=FetchType.LAZY```
+- cascade : 영속성 전이 기능 사용
+- targetEntity : 연관된 엔티티의 타입 정보 설정. 거의 사용X
+
+## 고급 매핑
+### 상속관계 매핑
+
+### Mapped Superclass - 매핑 정보 상속
+
+
+## 프록시와 연관관계 관리
+### 프록시
+
+### 즉시 로딩과 지연 로딩
+
+### 영속성 전이(CASCADE)와 고아 객체
+
+
+## 값 타입
+### 기본값 타입
+
+### 임베디드 타입
+
+### 값 타입과 불변 객체
+
+### 값 타입의 비교
+
+### 값 타입 컬렉션
+
+
+## 객체지향 쿼리 언어 - 기본
+### 기본 문법과 쿼리 API
+
+### 프로젝션(SELECT)
+
+### 페이징
+
+### 조인
+
+### 서브쿼리
+
+### JPQL 타입 표현과 기타식
+
+### 조건식 (CASE 등등)
+
+### JPQL 함수
+
+
+## 객체지향 쿼리 언어 - 중급
+### 경로 표현식
+
+### 페치 조인
+
+### 다형성 쿼리
+
+### 엔티티 직접 사용
+
+### Named 쿼리
+
+### 벌크 연산
