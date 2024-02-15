@@ -449,6 +449,40 @@
 
 ## 고급 매핑
 ### 상속관계 매핑
+- 관계형 데이터베이스는 상속 관계 X
+- 슈퍼타입 서브타입 관계 모델링 기법 -> 객체 상속과 유사
+- 상속관계 매핑: 객체의 상속 구조와 DB의 슈퍼타입 서브타입 관계 매핑
+  - 각각 테이블로 변환 -> **조인 전략** (ITEM -JOIN- ALBUM, MOVIE, BOOK 테이블)
+    - 장점
+      - 테이블 정규화
+      - 외래키 참조 무결성 제약조건 활용 가능
+      - 저장공간 효율화
+    - 단점
+      - 조회 시 조인 많이 사용, 성능 저하
+      - 조회 쿼리 복잡
+      - 데이터 저장 시 INSERT SQL 2번 호출
+  - (Default)통합 테이블로 변환 ->**단일 테이블 전략**(ALBUM: ITEM_ID, NAME, PRICE, ARTIST, DIRECTER, ...)
+    - 장점
+      - 조인 필요 없으므로 일반적으로 조회 성능 빠름
+      - 조회 쿼리 단순
+    - 단점
+      - 자식 엔티티가 매핑한 컬럼은 모두 null 허용
+      - 단일 테이블에 모든 것을 저장하여 테이블이 커질 수 있음 -> 조회 성능 저하 유발
+  - 서브타입 테이블로 변환 -> ~~구현 클래스마다 테이블 전략~~(ALBUM: ITEM_ID, NAME, PRICE, ARTIST)
+    - 장점
+      - 서브 타입 명확하게 구분해서 처리할 때 효과적
+      - not null 제약조건 사용가능
+    - 단점
+      - 여러 자식 테이블을 함께 조회할 때 성능이 느림(union all)
+      - 자식 테이블을 통합하여 쿼리 날리기 어려움
+- 주요 어노테이션
+  - ```@Inheritance(strategy=InheritanceType.XXX)```
+    - JOINED: 조인 전략 (슈퍼 타입에 작성)
+    - SINGLE_TABLE: 단일 테이블 전략
+    - TABLE_PER_CLASS: 구현 클래스 마다 테이블 전략
+  - ```@DiscriminatorColumn(name="DTYPE")```
+  - ```@DiscriminatorValue("entity_name")```
+
 
 ### Mapped Superclass - 매핑 정보 상속
 
