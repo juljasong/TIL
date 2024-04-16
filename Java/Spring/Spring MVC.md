@@ -28,5 +28,49 @@
   - ```@DeleteMapping```: 삭제
 
 # 03. Filter, Interceptor
+![Filter, Interceptor](/Java/Spring/images/filterInterceptor.png)
+## Filter
+```java
+
+  @Configuration
+  public class WebConfig {
+
+    @Bean
+    public FilterRegistrationBean loggingFilter() {
+      FilterRegistrationBean<Filter> filterRegistrationBean = new FilterRegistrationBean<>();
+      filterRegistrationBean.setFilter(new LogFilter());
+      filterRegistrationBean.setOrder(1);
+      filterRegistrationBean.addUrlPatterns("/*");
+
+      return filterRegistrationBean;
+    }
+  }
+
+
+  @Slf4j
+  public class LogFilter implements Filter {
+    
+    @Override
+    public void doFilter(
+      ServletRequest req, ServletResponse res, FilterChain chain
+      ) throws ServletException, IOException {
+
+      log.info("Start Filter : " + Thread.currentThread());
+      chain.doFilter(req, res);
+      log.info("End Filter : " + Thread.currentThread());
+    }
+  }
+
+```
+- 스프링 외부의 **서블릿**에서 제공하는 공통 처리 기능
+- 스프링 내로 요청이 들어오기 전 / 스프링 요청이 나갈 때 처리 가능
+- 조금 더 **low level** 처리 가능
+- doFilter
+
+## Interceptor
+- 스프링에서 제공하는 공통 처리 기능
+- 실제 매핑된 handler 정보 확인 가능(어떤 것이 실제 내 요청을 처리하는지도 확인 가능)
+- 조금 더 상세한 조건식과, 세부적인 스펙(pre, post, after)를 통해 구체적인 시점에 구체적인 동작 가능
+- AOP와 비교하면 AOP는 인터셉터 보다 더 구체적인 조건(애노테이션, 파라미터, 주소 등)과 동작 위치(afterThrowing 등)을 가짐
 
 # 04. Exception
