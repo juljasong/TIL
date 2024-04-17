@@ -125,3 +125,176 @@
 - AOP와 비교하면 AOP는 인터셉터 보다 더 구체적인 조건(애노테이션, 파라미터, 주소 등)과 동작 위치(afterThrowing 등)을 가짐
 
 # 04. Exception
+- 스프링 MVS 에서 예외를 처리하는 방법(REST API용)
+- @ExceptionHandler
+  - 컨트롤러 기반 예외 처리
+  - HTTP Status code를 변경하는 방법
+    - @ResponseStatus
+    - ResponseEntity 활용
+  - 예외처리 우선 순위
+    1. 해당 Exception이 정확히 지정된 Handler
+    2. 해당 Exception의 부모 예외 Handler
+    3. 이도 저도 아니면 그냥 Exception(모든 예외의 부모)
+
+## 컨트롤러 기반 예외 처리 & @ResponseStatus
+```java
+@Getter
+public class ErrorResponse {
+    private final String code;
+    private final String message;
+
+    private final Map<String, String> validation;
+
+    public void addValidation(String fieldName, String errorMessage) {
+        this.validation.put(fieldName, errorMessage);
+    }
+
+    @Builder
+    public ErrorResponse(String code, String message, Map<String, String> validation) {
+        this.code = code;
+        this.message = message;
+        this.validation = validation != null ? validation : new HashMap<>();
+    }
+}
+
+@RestControllerAdvice
+@Slf4j
+public class ExceptionController {
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    @ResponseBody
+    public ErrorResponse invalidExceptionHandler(MethodArgumentNotValidException e) {
+
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .code("400")
+                .message("잘못된 요청입니다.")
+                .build();
+
+        for (FieldError fieldError : e.getFieldErrors()) {
+            errorResponse.addValidation(fieldError.getField(), fieldError.getDefaultMessage());
+        }
+
+        return errorResponse;
+    }
+}
+```
+
+## ResponseEntity
+```java
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ErrorResponse> invalidExceptionHandler(MethodArgumentNotValidException e) {
+
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .code("400")
+                .message("잘못된 요청입니다.")
+                .build();
+
+        for (FieldError fieldError : e.getFieldErrors()) {
+            errorResponse.addValidation(fieldError.getField(), fieldError.getDefaultMessage());
+        }
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                             .header("newHeader", "values..")
+                             .body(errorResponse);
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ErrorResponse> handleException(CommonCustomException e) {
+      log.error("CommonCustomException is occurred. ", e);
+
+      return ResponseEntity
+              .status(HttpStatus.INTERNAL_SERVER_ERROR)
+              .body(new ErrorResponse(ErrorCode.INTERNAL_SERVER_ERROR, "Exception is occurred."));
+    }
+```
+
+## Custom Exception
+```java
+public enum ErrorCode {
+  INTERNAL_SERVER_ERROR(500),
+  TOO_BIG_ID_ERROR(507),
+  TOO_SMALL_ID_ERROR(507);
+
+  // 문자열을 저장할 필드
+  private int code;
+
+  // 생성자 (싱글톤)
+  private code(int code) {
+    this.code = code;
+  }
+
+  // Getter
+  public String getCode() {
+    return code;
+  }
+}
+
+public class AlreadyExistsEmailException extends CommonException {
+  private static final String MESSAGE = "이미 등록된 이메일 입니다.";
+
+  public AlreadyExistsEmailException() {
+    super(MESSAGE);
+  }
+
+  @Override
+  public int getStatusCode() {
+    return 400;
+  }
+}
+
+  @Getter
+  public abstract class CommonException extends RuntimeException {
+
+    public final Map<String, String> validation = new HashMap<>();
+
+    public CommonException(String message) {
+      super(message);
+    }
+
+    public CommonException(String message, Throwable cause) {
+      super(message, cause);
+    }
+
+    public abstract int getStatusCode();
+
+    public void addValidation(String fieldName, String message) {
+      validation.put(fieldName, message);
+    }
+}
+```
+
+## @RestControllerAdvice
+- 어플리케이션의 전역적 예외 처리
+- @ControllerAdvice랑 차이는?
+  - Controller vs RestController 차이와 동일
+  - @ControllerAdvice: 기본적으로 view 응답
+  - @RestControllerAdvice: REST API 용으로 객체를 응답(주로 JSON)
+  - 일관적인 예외 및 응답 처리를 위해 Spring 백엔드 개발에서 현재 가장 많이 활용되는 기술
+
+```java
+@RestControllerAdvice
+@Slf4j
+public class GlobalExceptionHandler {
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    @ResponseBody
+    public ErrorResponse invalidExceptionHandler(MethodArgumentNotValidException e) {
+
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .code("400")
+                .message("잘못된 요청입니다.")
+                .build();
+
+        for (FieldError fieldError : e.getFieldErrors()) {
+            errorResponse.addValidation(fieldError.getField(), fieldError.getDefaultMessage());
+        }
+
+        return errorResponse;
+    }
+
+    ...
+}
+```
