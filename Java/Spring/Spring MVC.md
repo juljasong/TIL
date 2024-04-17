@@ -68,6 +68,57 @@
 - doFilter
 
 ## Interceptor
+```java
+
+ @Configuration
+  public class WebConfig implements WebMvcConfigurer {
+
+    @Override
+    public void addInterceptor(InterceptorRegistry registry) {
+      registry.addInterceptor(new LogInterceptor())
+              .order(1)
+              .addPathPatterns("/**")
+              .excludePathPatterns("/css/*", "/images/*");
+    }
+  }
+
+  @Slf4j
+  public class LogInterceptor implements HandlerInterceptor {
+    
+    // 핸들링 전
+    @Overrice
+    public boolean preHandle(
+      HttpServletRequest req, HttpServletResponse res, Object handler
+      ) throws Exception {
+      log.info("preHandle Interceptor : " + Thread.currentThread());
+      log.info("preHandle handle : " + handler);
+      return true;
+    }
+
+    // 핸들링 후
+    @Overrice
+    public void postHandle(
+      HttpServletRequest req, HttpServletResponse res, Object handler, ModelAndView modelAndView
+      ) {
+      log.info("postHandle Interceptor : " + Thread.currentThread());
+      return true;
+    }
+
+    // finally (Exception이 나서 중단되어도 실행)
+    @Overrice
+    public void afterCompletion(
+      HttpServletRequest req, HttpServletResponse res, Object handler, Exception ex
+      ) {
+      log.info("afterCompletion Interceptor : " + Thread.currentThread());
+      
+      if (ex != null) {
+        log.error("afterCompletion exception : " + ex.getMessage());
+      }
+    }
+
+  }
+
+```
 - 스프링에서 제공하는 공통 처리 기능
 - 실제 매핑된 handler 정보 확인 가능(어떤 것이 실제 내 요청을 처리하는지도 확인 가능)
 - 조금 더 상세한 조건식과, 세부적인 스펙(pre, post, after)를 통해 구체적인 시점에 구체적인 동작 가능
