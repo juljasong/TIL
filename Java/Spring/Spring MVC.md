@@ -221,12 +221,12 @@ public enum ErrorCode {
   private int code;
 
   // 생성자 (싱글톤)
-  private code(int code) {
-    this.code = code;
+  private ErrorCode(int code) {
+      this.code = code;
   }
 
   // Getter
-  public String getCode() {
+  public int getCode() {
     return code;
   }
 }
