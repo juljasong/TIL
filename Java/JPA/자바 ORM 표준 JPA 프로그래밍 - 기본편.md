@@ -272,7 +272,7 @@
 
 ## 연관관계 매핑
 ### 단방향 연관관계
-![단방향 연관관계](/JPA/images/image.jpg)
+![단방향 연관관계](/Java/JPA/images/image.jpg)
 ```java
   @Entity
   public class Member {
@@ -292,7 +292,7 @@
   }
 ```
 ### 양방향 연관관계
-![양방향 연관관계](/JPA/images/image-1.jpg)
+![양방향 연관관계](/Java/JPA/images/image-1.jpg)
 ```java
   @Entity
   public class Team {
@@ -382,7 +382,7 @@
 - 다대일 양방향
   - 외래키가 있는 쪽이 연관관계의 주인
   - 양쪽을 서로 참조하도록 개발
-  - 
+  
 ### 일대다 [1:N] ***-> 다대일 양방향 매핑을 사용하도록..***
 - 1이 연관관계의 주인
   - 테이블의 경우, 항상 N 쪽에 외래키가 있음(N이 연관관계의 주인)
@@ -496,11 +496,77 @@
 
 ## 프록시와 연관관계 관리
 ### 프록시
+- ```em.find()``` : 데이터베이스를 통해 실제 엔티티 객체 조회
+- ```em.getRefernce()``` : 데이터베이스 조회를 미루는 가짜(프록시) 엔티티 객체 조회
+- 특징
+  - 실제 클래스 상속 받아 만들어짐
+  - 실제 클래스와 겉 모양이 같음
+  - 사용하는 입장에서는 진짜 객체인지 프록시 객체인지 구분하지 않고 사용하면 됨(이론상)
+  - 프록시 객체는 실제 객체의 참조(target)를 보관
+  - 프록시 객체를 호출하면 프록시 객체는 실제 객체의 메소드 호출
+  - **프록시 객체는 처음 사용할 때 한 번만 초기화**
+  - **프록시 객체를 초기화 할 때, 프록시 객체가 실제 엔티티로 바뀌는 것은 아님, 초기화 되면 프록시 객체를 통해 실제 엔티티에 접근 가능**
+  - **프록시 객체는 원본 엔티티를 상속 받고, 따라서 타입 체크 시 주의(== 비교가 아닌, ```instance of``` 사용)**
+  - **영속성 컨텍스트에 찾는 엔티티가 이미 있으면, em.getReference()를 호출해도 실제 엔티티 반환**
+  - ***영속성 컨텍스트의 도움을 받을 수 없는 준영속 상태일 때, 프록시를 초기화하면 문제 발생(hibernate.LazyInitializationException)***
+- 프록시 확인
+  - ```emf.getPersistenceUnitUtil.isLoaded(Object entity)``` : 프록시 인스턴스의 초기화 여부 확인
+  - ```entity.getClass().getName()``` : 프록시 클래스 확인
+  - ```org.hibernate.Hibernate.initialize(entity);``` : 프록시 강제 초기화(JPA 표준은강제 초기화 없음)
+
 
 ### 즉시 로딩과 지연 로딩
+- ```@ManyToOne(fetch = FetchType.LAZY))``` : 지연 로딩. member 조회 시 team 조회하지 않고, team은 프록시로 가지고 있음. 실제 team을 사용하는 시점에 초기화
+- ```@ManyToOne(fetch = FetchType.EAGER)``` : 즉시 로딩. member와 team을 한꺼번에 조회
+- 프록시와 즉시로딩 주의
+  - **가급적 지연 로딩만 사용(특히 실무에서)**
+  - 즉시 로딩을 적용하면 예상하지 못한 SQL이 발생
+  - **즉시 로딩은 JPQL에서 N+1 문제를 일으킴**
+    - 지연 로딩 설정 후 join 필요할 땐 **fetch join** 사용
+  - **@ManyToONe, @OneToOne은 기본이 즉시 로딩 -> LAZY로 설정**
+  - @OneToMany, @ManyToMany는 기본이 지연 로딩
+- 실무 tip
+  - 모든 연관관계에 지연 로딩 사용할 것
+  - JPQL fetch 조인이나 엔티티 그래프 기능 사용
+  
+### 영속성 전이(CASCADE)
+- 영속성 전이: CASCADE
+  - 특정 엔티티를 영속 상태로 만들 때 연관된 엔티티도 함께 영속 상태로 만들고 싶을 때
+  - ex) 부모 엔티티를 저장할 때 자식 엔티티도 같이 저장
+  - ```@OneToMany(mappedBy = "parent", cascade = CascadeType.ALL)```
+  - 종류
+    - **ALL : 모두 적용(PERSIST + REMOVE)**
+    - **PERSIST : 영속**
+    - **REMOVE : 삭제**
+    - MERGE : 병합
+    - REFRESH
+    - DETACH
+  - 주의 사항
+    - 연관관계 매핑과는 아무 관련 없음
+  - 하나의 부모가 자식들을 관리할 때
+    - O : 게시물 첨부파일 (단일 엔티티에 종속적일 때, 단일 소유자, 라이프 사이클이 같을 때)
+    - X : 다른 객체와도 연관관계가 있는 경우
 
-### 영속성 전이(CASCADE)와 고아 객체
+### 고아 객체
+- 고아 객체 제거 : 부모 엔티티와 연관 관계가 끊어진 자식 엔티티를 자동으로 삭제
+- ```@OneToMany(mappedBy = "parent", orphanRemoval = true)```
+- ```java
+  Parent parent1 = em.find(Parent.class, id);
+  parent1.getChildren().remove(0);
+  // 자식 엔티티를 컬렉션에서 제거
 
+  --> DELETE FROM CHILD WHERE ID = ?
+  ```
+- 참조가 제거된 엔티티는 다른 곳에서 참조하지 않는 고아 객체로 보고 삭제하는 기능
+- **참조하는 곳이 하나일 때 사용해야 함**
+- **특정 엔티티가 개인 소유할 때 사용**
+- @OneToOne, @OneToMany만 가능
+- 참고 : 개념적으로 부모를 제거하면 자식은 고아가 된다. 따라서, 고아 객체 제거 기능을 활성화 하면, 부모를 제거할 때 자식도 함께 제거된다. 이것은 ```CascadeType.REMOVE``처럼 동작한다.
+- ```cascade = CascadeType.ALL, orphanRemoval = true```의 의미
+  - 스스로 생명주기를 관리하는 엔티티는 em.persist()로 영속화, em.remove()로 제거
+  - 두 옵션을 모두 활성화 하면 부모 엔티티를 통해 자식의 생명 주기를 관리할 수 있음
+  - 도메인 주도 설계(DDD)의 Aggregate Root 개념을 구현할 떄 유용
+    - 자식 객체들은 Repository가 따로 필요 없음
 
 ## 값 타입
 ### 기본값 타입
