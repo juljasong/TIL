@@ -730,21 +730,191 @@
   
 ## 객체지향 쿼리 언어 - 기본
 ### 기본 문법과 쿼리 API
+- JPA가 지원하는 쿼리
+  - **JPQL**
+    - 가장 단순한 조회 방법
+      - EntityManager.find()
+      - 객체 그래프 탐색(a.getB().getC())
+    - 나이가 18살 이상인 회원을 모두 검색하고 싶다면?
+    - JPA를 사용하면 엔티티 객체를 중심으로 개발
+    - 문제는 검색 쿼리
+    - 모든 DB 데이터를 객체로 변환해서 검색하는 건 불가능
+    - 어플리케이션이 필요한 데이터만 DB에서 불러오려면 결국 검색 조건 포함된 SQL 필요
+    - JPA는 SQL 추상화한 JPQL이라는 객체 지향 쿼리 언어 제공
+      - SQL과 유사한 문법 : SELECT, FROM, WHERE, GROUP BY, HAVING, JOIN 지원
+    - SQL을 추상화해서 특정 DB SQL에 의존 X
+    - JPQL은 **엔티티 객체를 대상으로 쿼리**
+    ```java
+        EntityManagerFactory emf = Persistence.createEntityManagerFactory("persistence.name");
+        EntityManager em = emf.createEntityManager();
+
+        EntityTransaction tx = em.getTransaction();
+        tx.begin();
+
+        try {
+           
+            List<Member> result = em.createQuery(
+              "select m From Member m where m.username like '%kim%'", Member.calss
+            ).getResultList();
+
+            tx.commit();
+        } catch (Exception e) {
+            tx.rollback();
+            e.printStackTrace();
+        } finally {
+            em.close();
+        }
+        emf.close();
+    ```
+  - JPA Criteria
+    - 문자가 아닌 자바코드로 JPQL 작성 가능
+    - JPQL 빌더 역할
+    - JPA 공식 기능
+    - 동적 쿼리 짜기 좋음
+    - 오타 -> 컴파일 에러
+    - 복잡스러움 -> 유지보수 어려움
+  - **QueryDSL**
+    - 문자가 아닌 자바코드로 JPQL 작성 가능
+    - JPQL 빌더 역할
+    - 컴파일 시점에 문법 오류를 찾을 수 있음
+    - 동적 쿼리 작성 편리
+    - 단순, 쉬움
+    - 실무 사용 권장
+  - 네이티브 SQL
+    ```java
+      em.createNativeQuery("SELECT MEMBER_ID FROM MEMEBER").getResultList();
+    ```
+  - JDBC API 직접 사용, MyBatis, SpringJdbcTemplate과 함께 사용
+    - 영속성 컨텍스트를 적절한 시점에 강제로 플러시 필요
 
 ### 프로젝션(SELECT)
+- SELECT 절에 조회 할 대상을 지정하는 것
+- 프로젝션 대상 : 엔티티, 임베디드 타입, 스칼라 타입(숫자, 문자 등 기본 데이터 타입)
+  - ```SELECT m FROM Member m``` -> 엔티티 프로젝션
+  - ```SELECT m.team FROM Member m``` -> 엔티티 프로젝션
+  - ```SELECT m.address FROM Member m``` -> 임베디드 타입 프로젝션
+  - ```SELECT m.username, m.age FROM Member m``` -> 스칼라 타입 프로젝션
+- DISTINCT로 중복 제거
+- 여러 값 조회
+  - ```SELECT m.username, m.age FROM Member m```
+    1. Query 타입으로 조회
+      - TypeQuery : 반환 타입 명확할 때
+        ```java
+          TypedQuery<Member> query = em.createQuery("SELECT m FROM Member m", Member.class);
+        ```
+    2. Object[] 타입으로 조회
+      - Query : 반환 타입 명확하지 않을 때 
+        ```java
+          List<Object[]> result = em.createQuery("SELECT m.username, m.age FROM Member m");
+        ```
+    3. new 명령어로 조회
+      - 단순 값을 DTO로 바로 조회
+      - 패키지 명을 포함한 전체 클래스명 입력
+      - 순서와 타입이 일치하는 생성자 필요
+        ```java
+          em.createQuery("SELECT new x.x.x.UserDTO(m.username, m.age) FROM Member m", MemberDTO.class);
+        ```
 
 ### 페이징
+- JPA는 페이징을 다음 두 API로 추상화
+  - ```setFirstResult(int startPosition)``` : 조회 시작 위치(0부터 시작)
+  - ```setMaxResult(int maxResult)``` : 조회할 데이터 수
 
 ### 조인
+- 종류
+  - 내부 조인 (INNER JOIN)
+    - ```SELECT m FROM Member m [INNER] JOIN m.team t```
+  - 외부 조인 (OUTER JOIN)
+    - ```SELECT m FROM Member m LEFT [OUTER] JOIN m.team t```
+  - 세타 조인 (CROSS JOIN)
+    - ```select count(m) from Member m, Team t where m.username = t.name```
+- 조인 - ON절 (JPA 2.1~)
+  1. 조인 대상 필터링
+       - ```SELECT m, t FROM Member m LEFT JOIN m.team t ON t.name = 'A'``` : 회원과 팀을 JOIN 하면서, 팀 이름이 A인 팀만 JOIN
+  2. 연관관계 없는 엔티티 외부 조인 (Hibernate 5.1~) 
+       - ```SELECT m, t FROM Member m LEFT JOIN Team t ON m.username = t.name``` : 회원의 이름과 팀의 이름이 같은 대상 외부 조인 
 
 ### 서브쿼리
+- 나이가 평균 보다 많은 회원
+  - ```SELECT m FROM Member m WHERE m.age > (SELECT AVG(m2.age) FROM Member m2)```
+- 한 건이라도 주문한 고객
+  - ```SELECT m FROM Member m WHERE (SELECT COUNT(o) FROM Order o WHERE m = o.member) > 0```
+- 서브 쿼리 지원 함수
+  - [NOT] EXISTS (subquery) : 서브쿼리에 결과가 존재하면 참
+    - {ALL | ANY | SOME} (subquery)
+    - ALL 모두 만족하면 참
+    - ANY, SOME : 동일한 의미, 조건 하나라도 만족하면 참
+    - 팀 A 소속인 회원 : ```SELECT m FROM Member m WHERE EXISTS (SELECT t FROM m.team t WHERE t.name = '팀A')```
+    - 전체 상품 각각의 재고보다 주문량이 많은 주문들 : ```SELECT o FROM Order o WHERE o.orderAmount > ALL (SELECT p.stockAmount FROM Product p)```
+    - 어떤 팀이든 팀에 소속된 회원 : ```SELECT m FROM Member m WHERE m.team = ANY (SELECT t FROM Team t)```
+  - [NOT] IN (subquery) : 서브쿼리의 결과 중 하나라도 같은 것이 있으면 참
+- 한계
+  - WHERE, HAVING 절에서만 서브 쿼리 사용 가능
+  - SELECT 절도 가능 (Hibernate에서 지원)
+  - FROM 절의 서브 쿼리는 현재 JQPL에서 불가
+    - JOIN으로 풀 수 있으면 풀어서 해결
 
 ### JPQL 타입 표현과 기타식
+- 문자 : 'HELLO', 'She''s'
+- 숫자 : 10L(Long), 10D(Double), 10F(Float)
+- Boolean : TRUE, FALSE
+- ENUM : package.package.ClassName (패키지명 포함)
+- 엔티티 타입 : TYPE(m) = Member (상속 관계에서 사용)
+- SQL과 문법 비슷
+  - EXISTS, IN
+  - AND, OR, NOT
+  - =, >, >=, <, <=, <>
+  - BETWEEN, LIKE, IS NULL
 
 ### 조건식 (CASE 등등)
+- 기본 CASE식
+```
+SELECT
+  CASE WHEN m.age <= 10 THEN '학생요금'
+       WHEN a.age >= 60 THEN '경로요금'
+       ELSE '일반요금'
+  END
+FROM Member m
+```
+-  단순 CASE식
+```
+SELECT
+  CASE t.name
+    WHEN '팀A' THEN '인센티브110%'
+    WHEN '팀B' THEN '인센티브120%'
+    ELSE '인센티브105%'
+  END
+FROM Team t
+```
+- **COALESCE** : 하나씩 조회해서 NULL이 아니면 반환
+  - ```SELECT COALESCE(m.username, '이름 없는 회원') FROM Member m``` : 사용자 이름이 없으면 이름 없는 회원을 반환
+- **NULLIF** : 두 값이 같으면 NULL, 다르면 첫 번째 값 반환
+  - ```SELECT NULLIF(m.username, '관리자') FROM Member m``` : 사용자 이름이 '관리자'면 NULL 반환하고 나머지는 username 반환
 
 ### JPQL 함수
+- CONCAT
+- SUBSTRING
+- TRIM
+- LOWER, UPPER
+- LENGTH
+- LOCATE
+- ABS, SQRT, MOD
+- SIZE, INDEX
+- 사용자 정의 함수
+  - 하이버네이트는 사용 전 방언에 추가해야 함
+    - 사용하는 DB 방언을 상속받고, 사용자 정의 함수를 등록
+    - ```SELECT FUNCTION('group_concat', i.name) FROM Item i```
+    - ```SELECT group_concat(i.name) FROM Item i``` : Hibernate 지원
+    - **Dialect 생성 후, persistence.xml에 dialect 등록**
+    ```java
 
+      public class MyH2Dialect extends H2Dialect {
+        public MyH2Dialect() {
+          registerFunction("gropu_concat", new StandardSQLFunction("group_concat", StandardBasicTypes.STRING));
+        }
+      }
+
+    ```
 
 ## 객체지향 쿼리 언어 - 중급
 ### 경로 표현식

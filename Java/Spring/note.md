@@ -176,7 +176,7 @@
 - **assertions**
   - 다양한 단어(assertion) 방법들
   ```java
-    assertEquals("1234", captor.getValue().getXXX());
+    assertEquals("1234", captor.getValue().getXXX());`
     assertNotEquals("1234", captor.getValue().getXXX());
     assertNull(result);
     assertNotNull(result);
