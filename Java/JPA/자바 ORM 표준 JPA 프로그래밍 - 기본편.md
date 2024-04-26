@@ -918,8 +918,119 @@ FROM Team t
 
 ## 객체지향 쿼리 언어 - 중급
 ### 경로 표현식
+- .을 찍어 객체 그래프를 탐색하는 것
+```
+SELECT m.username -- 상태 필드
+       , m.team.name
+  FROM Member m
+  JOIN m.team t   -- 단일 값 연관 필드
+  JOIN m.orders o -- 컬렉션 값 연관 필드
+ WHERE t.name = '팀A'
+```
+- 용어
+  - 상태 필드(state field) : 단순히 값을 저장하기 위한 필드 ex) m.username
+  - 연관 필드(association field) : 연관관계를 위한 필드
+    - 단일 값 연관 필드
+      - ```@ManyToOne```, ```@OneToOne``` 대상이 엔티티 ex) m.team
+    - 컬렉션 값 연관 필드
+      - ```@OneToMany```, ```@ManyToMany``` 대상이 컬렉션 ex) m.orders
+- 특징
+  - 상태 필드 : 경로 탐색의 끝, 탐색 X
+  - 단일 값 연관 경로 : **묵시적 내부 조인** 발생, 탐색 O
+  - 컬렉션 값 연관 경로 : 묵시적 내부 조인 발생, 탐색 X
+    - FROM 절에서 명시적 조인을 통해 별칭을 얻으면 별칭을 통해 탐색 가능
+  - 묵시적 내부 조인 -> 쿼리 튜닝 어려움. 실무에서는 사용 지양
+- JOIN
+  - 명시적 조인 : join 키워드 직접 사용
+    ```select m from Member m join m.team t```
+  - 묵시적 조인 : 경로 표현식에 의해 묵시적으로 SQL 조인 발생(내부 조인만 가능)
+    ```select m.team from Member m```
+- 경로 탐색을 사용한 묵시적 조인 시 주의 사항
+  - 항상 내부 조인
+  - 컬렉션은 경로 탐색의 끝, 명시적 조인을 통해 별칭을 얻어야 함
+  - 경로 탐색은 주로 SELECT, WHERE 절에서 사용하지만 묵시적 조인으로 인해 SQL의 FROM(JOIN) 절에 영향을 줌 
+- 정리
+  - **가급적 묵시적 조인 대신 명시적 조인 사용**
+  - 조인은 SQL 튜닝에 중요 포인트
+  - 묵시적 조인은 조인이 일어나는 상황을 한눈에 파악하기 어려움
 
 ### 페치 조인
+- SQL 조인 종류 X
+- JPQL에서 **성능 최적화**를 위해 제공하는 기능
+- 연관된 엔티티나 컬렉션을 SQL **한 번**에 함께 조회하는 기능
+- ```join fetch```
+
+#### Entity Fetch Join
+- 회원을 조회하면서 연관된 팀도 함께 조회
+  - JPQL
+    ```
+    select m from Member m join fetch m.team
+    ```
+  - SQL
+    ```
+    SELECT M.*, T.* FROM MEMBER M INNER JOIN TEAM R ON M.TEAM_ID = T.ID
+    ```
+
+#### Collection Fetch Join
+- 일대다 관계
+  - JPQL
+    ```
+    select t
+      from Team
+      join fetch t.members
+     where t.name = '팀A'
+    ```
+  - SQL
+    ```
+    SELECT T.*, M.*
+      FROM TEAM T
+     INNER JOIN MEMBER M
+        ON T.ID = M.TEAM_ID
+     WHERE T.NAME = '팀A'
+    ```
+
+#### JPQL의 DISTINCT
+```
+select distinct t 
+  from Team t
+  join fetch t.members
+  where t.name = '팀A'
+```
+1. SQL에 DISTINCT 추가
+   - SQL에 DISTINCT 추가해도 데이터가 달라 SQL 결과에서 중복 제거 X
+2. **어플리케이션에서 엔티티 중복 제거**
+   -  DISTINCT가 추가로 애플리케이션에서 중복 제거 시도
+   -  같은 식별자를 가진 엔티티 제거 
+
+#### 페치 조인과 일반 조인의 차이
+- JPQL은 결과 반환 시 연관관계 고려 X
+- SELECT절에 지정한 엔티티만 조회할 뿐
+- 페치 조인을 사용할 때만 연관된 엔티티도 함께 조회(즉시 로딩)
+- ***페치 조인은 객체 그래프를 SQL 한 번에 조회하는 개념**
+
+#### 페치 조인의 특징과 한계
+- **페치 조인 대상에는 별칭을 줄 수 없음**
+  - 하이버네이트는 가능, 가급적 사용 X
+- 둘 이상의 컬렉션은 페치 조인 할 수 없음
+- 컬렉션을 페치 조인하면 페이징 API(setFirstResult, setMaxResults) 사용할 수 없음
+  - 일대일, 다대일 같은 단일 값 연관 필드들은 페치 조인 해도 페이징 가능
+  - 하이버네이트는 경고 로그를 남기고 메모리에서 페이징(매우 위험)
+- **Batch Size**  : N + 1 해결
+  - 엔티티에 설정 (1000이하)
+    ```
+      @BatchSize(size = 100)
+      @OneToMany(mappedBy = "team")
+      private List<Member> members = new ArrayList<>();
+    ```
+  - 글로벌 세팅도 가능 (1000이하)
+- 연관된 엔티티들을 SQL 한 번으로 조회 - 성능 최적화
+- 엔티티에 직접 적용하는 글로벌 로딩 전략보다 우선
+- 실무에서 글로벌 로딩 전략은 모두 지연 로딩
+- 최적화가 필요한 곳에 페치 조인 적용
+- 정리
+  - 모든 것을 페치 조인으로 해결 X
+  - 페치 조인은 객체 그래프 유지할 떄 사용하면 효과적
+  - 여러 테이블을 조인해서 엔티티가 가진 모양이 아닌 전혀 다른 결과를 내야 하면, 페치 조인 보다는 일반 조인을 사용하고 필요한 데이터들만 조회해서 DTO로 반환하는 것이 효과적
 
 ### 다형성 쿼리
 
