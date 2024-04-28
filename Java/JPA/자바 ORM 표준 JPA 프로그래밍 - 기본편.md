@@ -1033,6 +1033,17 @@ select distinct t
   - 여러 테이블을 조인해서 엔티티가 가진 모양이 아닌 전혀 다른 결과를 내야 하면, 페치 조인 보다는 일반 조인을 사용하고 필요한 데이터들만 조회해서 DTO로 반환하는 것이 효과적
 
 ### 다형성 쿼리
+- TYPE
+  - 조회 대상을 특정 자식으로 한정
+  - ex) Item 중 Book, Movie 조회
+    ```
+    [ JPQL ]
+    select i from Item i where type(i) IN (Book, Movie)
+
+    [ SQL ]
+    select i from i
+    where i.DTYPE in ('B', 'M')
+    ```
 
 ### 엔티티 직접 사용
 
