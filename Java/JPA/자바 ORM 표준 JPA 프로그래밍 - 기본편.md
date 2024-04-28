@@ -1072,5 +1072,27 @@ select distinct t
     ```
 
 ### Named 쿼리
+  ```java
+  @Entity
+  @NamedQuery(
+    name = "Member.findByUsername",
+    query = "select m from Member m where m.username = :username"
+  )
+  public class Member {
+    ...
+  }
+
+  List<Member> resultList = 
+    em.createNamedQuery("Member.findByUsername", Member.clas)
+      .setParameter("username", "회원1")
+      .getResultList();
+  ```
+- 미리 정의해서 이름을 부여해두고 사용하는 JPQL
+- 정적 쿼리
+- 어노테이션, XML에 정의
+  - XML이 항상 우선권을 가짐
+  - 애플리케이션 운영 환경에 따라 다른 XML 배포 가능
+- **애플리케이션 로딩 시점에 초기화 후 재사용**
+- **애플리케이션 로딩 시점에 쿼리 검증**
 
 ### 벌크 연산
