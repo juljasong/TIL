@@ -1060,6 +1060,16 @@ select distinct t
     ```
 
 ### 엔티티 직접 사용
+- 기본키 값
+  - JPQL에서 엔티티를 직접 사용하면 SQL에서 해당 엔티티의 기본키 값을 사용
+    ```
+    [ JPQL ]
+    select count(m.id) from Member m -- 엔티티의 아이디 사용
+    select count(m) from Member m -- 엔티티 직접 사용
+
+    [ SQL ]
+    select count(m.id) as cnt from Member m
+    ```
 
 ### Named 쿼리
 
