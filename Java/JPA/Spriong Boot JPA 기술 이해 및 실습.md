@@ -86,7 +86,7 @@ extends JpaRepository<Object, Long>
   - 엔티티 이름(설정 명칭)
   - 별칭 필수
 - TypedQuery
-    ```TypedQuert<Review> query = em.createQuery(jpql, Review. class);```
+    ```TypedQuery<Review> query = em.createQuery(jpql, Review. class);```
 - Query
     ```Query<Object> query = em.createQuery(jpql, Review.class)```
 

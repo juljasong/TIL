@@ -1,3 +1,28 @@
+# 어플리케이션 아키텍처
+
+## 계층형 구조 
+### Controller
+- 웹 계층
+
+### Service
+- 비즈니스 로직, 트랜잭션 처리
+
+### Repository
+- JPA를 직접 사용하는 계층, 엔티티 매니저 사용
+
+### Domain
+- 엔티티가 모여 있는 계층, 모든 계층에서 사용
+
+## 패키지 구조
+- config
+- controller
+- domain
+- exception
+- repository
+- request
+- response
+- service
+
 # Lombok
 - 보일러 플레이트 코드를 줄여주는 라이브러리
 - 종류
