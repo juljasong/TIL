@@ -83,6 +83,60 @@ List<Member> members = memberRepository.findByNames(Arrays.asList("memberA", "me
 ```
 
 ## 반환타입
+- Collection<T>
+- T
+- Primitive
+- Wrapper
+- Optional
+- ...
 
-## 순수 JPA 페이징과 정렬
+## 페이징과 정렬
+### 순수 JPA
+```java
+public List<Member> findByPage(int age, int offset, int limit) {
+    return em.createQuery("select m from Member m where m.age = :age order by m.username desc", Member.class)
+            .setParameter("age", age)
+            .setFirstResult(offset) // offset 1부터 시작
+            .setMaxResults(limit)
+            .getResultList();
+}
 
+public long totalCount(int age) {
+    return em.createQuery("select count(m) from Member m where m.age = :age", Long.class)
+            .setParameter("age", age)
+            .getSingleResult();
+}
+```
+
+### Spring Data JPA
+- Page
+```java
+// 정의
+@Query(value = "select m from Member m left join m.team t", 
+       countQuery = "select count(m) from Member m") // count 쿼리 분리 가능
+Page<Member> findByAge(int age, Pageable pageable);
+
+// 사용
+int age = 10;
+PageRequest pageRequest = PageRequest.of(0, 3, Sort.Direction.DESC, "username");
+// offset 0부터 시작
+
+Page<Member> page = memberRepository.findByAge(10, pageRequest);
+
+List<Member> members = page.getContent();
+int totalPages = page.getTotalPages();    // 전체 페이지 수
+int size = page.getSize();                // 현재 페이지 사이즈
+int number = page.getNumber();            // 현재 몇 번째
+boolean hasNext = page.hasNext();         // 다음 페이지 존재 여부
+```
+- Slice
+```java
+Slice<Member> findByAge(int age, Pageable pageable);
+
+Slice<Member> slice = memberRepository.findByAge(10, pageRequest);
+
+List<Member> members = slice.getContent();
+int size = slice.getSize();
+int number = slice.getNumber();
+boolean hasNext = slice.hasNext();
+```
