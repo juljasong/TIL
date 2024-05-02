@@ -187,3 +187,114 @@ select m1_0.member_id,m1_0.age,m1_0.team_id,m1_0.username from member m1_0 where
 ```
 - [for update](https://dololak.tistory.com/446)
 - 실시간 트래픽이 많은 경우에는 사용을 지양하는 것이 좋음..
+
+# 확장 기능
+## 사용자 정의 리포지토리 구현
+- Interface로 해결이 안되는 경우 QueryDsl 등을 사용해야 할 때 커스텀 필요
+  - Interface :: 정의   
+  - XXXRepository**Impl** extends [interface] :: 인터페이스 구현
+  - XXXRepository implements JpaRepository<XXX, Long>, [interface] :: JpaRepository와 연동
+- **항상 사용자 정의 리포지토리가 필요한 것이 아님.** 임의의 리포지토리 만들어 빈으로 등록해서 그냥 직접 사용해도 됨.
+
+
+## Auditing
+- 엔티티 생성, 변경한 사람과 시간을 추적하기 위한 기능
+  - 등록일
+  - 수정일
+  - 등록자
+  - 수정자
+- 순수 JPA 주요 어노테이션
+  - ```@MappedSuperclass```
+  - ```@PrePersist```,```@PreUpdate```
+  - ```@PostPersist```,```@PostUpdate```
+- Spring Data JPA
+  - ```@EnableJpaAuditing```
+  - ```@CreatedDate```, ```@LastModifiedDate```
+  - ```@CreatedBy```,```@LastModifiedBy```
+```java
+@EntityListeners(AuditingEntityListener.class)
+@MappedSuperclass
+@Getter
+public class BaseEntity {
+
+    // 일시만 따로 관리하는 엔티티를 만들어서 상속받아 사용하는 것도 방법
+    @CreatedDate
+    @Column(updatable = false)
+    private LocalDateTime createdDate;
+
+    @LastModifiedDate
+    private LocalDateTime lastModifiedDate;
+
+    @CreatedBy
+    @Column(updatable = false)
+    private String createdBy;
+
+    @LastModifiedBy
+    private String lastModifiedBy;
+
+}
+```
+```java
+@EnableJpaAuditing // <-
+@SpringBootApplication
+public class DataJpaApplication {
+
+	public static void main(String[] args) {
+		SpringApplication.run(DataJpaApplication.class, args);
+	}
+
+	@Bean
+	public AuditorAware<String> auditorProvider() { // <-
+		return () -> Optional.of(UUID.randomUUID().toString()); // 수정자
+	}
+
+}
+```
+
+## Web 확장 - 도메인 클래스 컨버터
+- pk 조회 시에만 사용 가능
+
+## Web 확장 - 페이징과 정렬
+```java
+@GetMapping("/members")
+public Page<Member> list(@PageableDefault(size = 5)Pageable pageable) {
+    return memberRepository.findAll(pageable);
+}
+```
+```url
+http://localhost:8080/members?page=1&size=10&sort=id,desc
+```
+- page : 0부터 시작
+- size : 크기
+- sort : 디폴트 asc
+- 글로벌 기본 값 변경은 application.yml
+    ```yml  
+    spring:
+      data:
+        web:
+          pageable:
+            default-page-size: 10
+            max-page-size: 100
+    ```
+ - 개별 설정 ```@PageableDefault```
+ - 접두사
+   - 페이징 정보가 둘 이상일 때 ```@Qaulifier("xxx")```
+
+# 스프링 데이터 JPA 분석
+## 새로운 엔티티를 구별하는 방법
+- 식별자가 객체 :: null
+- 식별자가 자바 기본 타입 :: 0
+- `Persistable` 인터페이스 구현 -> isNew() 오버라이드
+
+# 나머지 기능들
+## Specifications(명세)
+
+
+## Query By Example
+
+
+## Projections
+
+
+## 네이티브 쿼리 
+
