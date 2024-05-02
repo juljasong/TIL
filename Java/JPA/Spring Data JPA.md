@@ -140,3 +140,50 @@ int size = slice.getSize();
 int number = slice.getNumber();
 boolean hasNext = slice.hasNext();
 ```
+
+## 벌크성 수정 쿼리
+```java
+@Modifying(clearAutomatically = true) // executeUpdate()
+@Query("update Member m set m.age = m.age + 1 where m.age >= :age")
+int bulkAgePlus(@Param("age") int age);
+```
+- 벌크 연산은 영속성 컨텍스트 관리 X
+- 벌크 연산 후에는 영속성 컨텍스트 날려야 함
+  - ```em.flush();``` : DB 반영
+  - ```em.clear();``` : 영속성 컨텍스트 날리기
+  - or
+  - ```@Modifying(clearAutomatically = true)```
+
+## @EntityGraph
+- fetch join
+```java
+@Query("select m from Member m left join fetch m.team t")
+List<Member> findMemberFetchJoin();
+```
+- EntityGraph
+```java
+@Override
+@EntityGraph(attributePaths = {"team"}) // fetch 조인됨 
+List<Member> findAll();
+```
+
+## JPA Hint
+- 순수 조회용으로 find 하는 경우 ```@QueryHints```
+- 영속성 컨텍스트 관리 X
+- 굳이 쓸 필요 없으면 안씀..
+```java
+@QueryHints(value = @QueryHint(name = "org.hibernate.readOnly", value = "true"))
+Member findReadOnlyByUsername(String username);
+```
+
+## JPA Lock
+```java
+@Lock(LockModeType.PESSIMISTIC_WRITE)
+List<Member> findLockByUsername(String username);
+```
+=>
+```
+select m1_0.member_id,m1_0.age,m1_0.team_id,m1_0.username from member m1_0 where m1_0.username=? for update
+```
+- [for update](https://dololak.tistory.com/446)
+- 실시간 트래픽이 많은 경우에는 사용을 지양하는 것이 좋음..
