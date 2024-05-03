@@ -1,3 +1,4 @@
+# 01_자바 ORM 표준 JPA 프로그래밍 - 기본편
 # JPA(Java Persistence API)
 
 - JDBC → MyBatis, JdbcTemplate → JPA
