@@ -288,13 +288,126 @@ http://localhost:8080/members?page=1&size=10&sort=id,desc
 
 # 나머지 기능들
 ## Specifications(명세)
-
+- 술어(predicate)
+  - 참 또는 거짓으로 평가
+  - ANd OR 같은 연산자로 조합하여 다양한 검색조건을 쉽게 생성(컴포지트 패턴)
+- Criteria 활용하여 사용할 수 있음
+- QueryDSL 사용하자
 
 ## Query By Example
-
+- 장점
+  - 도메인 객체를 그대로 사용
+  - 동적 쿼리를 편리하게 처리
+  - RDB에서 NOSQL로 바꿔도 코드 변경 없이 사용 가능
+  - 스프링 데이터 JPA 인터페이스에 이미 포함
+- 단점
+  - INNER JOIN만 가능
+  - 중첩 제약 조건 불가
+  - 단순한 매칭 조건
+- QueryDSL 사용하자
 
 ## Projections
+- 엔티티 대신 DTO 조회할 때 사용
+- 전체 엔티티가 아니라 특정 값만 조회할 때
+- 인터페이스 기반
+  1. 인터페이스 정의
+      ```java
+      @Value("#{target.username + ' ' + target.age}") // 문자열 붙이기 가능. 필요 시에만
+      public interface UsernameOnly {
+        String getUsername();
+      }
+      ```
+  2. JPA 리포지토리에서 Return 타입으로 구현
+      ```java
+      List<UsernameOnly> findProjectionsByUsername(@Param("username")String username);
+      ```
+  3. 사용
+      ```java
+      List<UsernameOnly> members = memberRepository.findProjectionsByUsername("memberA");
+      ```
+- 클래스 기반
+  1. 클래스 정의
+      ```java
+      @Getter
+      public class UsernameOnlyDto {
+          private final String username;
 
+          public UsernameOnlyDto(String username) {
+              this.username = username;
+          }
+      }
+      ```
+  2. JPA 리포지토리에서 Return 타입으로 구현
+      ```java
+      List<UsernameOnlyDto> findProjectionsByUsername(@Param("username")String username);
+      ```
+  3. 사용
+      ```java
+      List<UsernameOnly> members = memberRepository.findProjectionsByUsername("memberA");
+      ```
+- 중첩 구조
+    ```java
+    public interface NestedClosedProjections {
+      String getUsername();
+      TeamInfo getTeam();
+
+      interface TeamInfo {
+          String getName();
+      }
+    }
+    ```
+    - ```select m.username,t.team_id,t.name from member m left join team t on t.team_id=m.team_id where m.username=?```
+    - 프로젝션 대상이 root 엔티티면, JPQL SELECT절 최적화 가능
+    - 프로젝션 대상이 ROOT가 아니면
+      - LEFT OUTER JOIN 처리
+      - 모든 필드를 SELECT 해서 엔티티로 조회한 다음 계산
+    - 정리
+      - 프로젝션 대상이 ROOT 엔티티일 때 유용
+      - 복잡한 쿼리 해결에는 한계가 있음
 
 ## 네이티브 쿼리 
+```java
+@Query(value = "select * from member where username = ?", nativeQuery = true)
+Member findByNativeQuery(String username);
+```
+- 사용 권장 X -> Projection 활용
+  - 반환타입: Object[], Tuple, DTO => 부족
+  - 제약
+    - Sort 파라미터를 통한 정렬이 정상 동작 하지 않을 수 있음
+    - 어플리케이션 로딩 시점 문법 확인 불가
+    - 동적 쿼리 불가
 
+### Projection 활용
+- Native Query + Projection
+```java
+public interface MemberProjection {
+    Long getId();
+    String getUsername();
+    String getTeamName();
+}
+```
+```java
+@Query(value = "select m.member_id as id, m.username, t.name as teamName " +
+                "from member m left join team t",
+                countQuery = "select count(*) from member", nativeQuery = true)
+Page<MemberProjection> findByNativeProjection(Pageable pageable);
+```
+```java
+Page<MemberProjection> memberList = memberRepository.findByNativeProjection(PageRequest.of(0, 10));
+List<MemberProjection> contents = memberList.getContent();
+```
+
+### 동적 네이티브 쿼리
+```java
+String sql = "select m.username as username from member m";
+List<MemberDto> result = em.createNativeQuery(sql)
+                            .setFirstResult(0)
+                            .setMaxResults(10)
+                            .unwrap(NativeQuery.class)
+                            .addScalar("username")
+                            .setResultTransformer(Transformers.aliasToBean(MemberDto.class))
+                            .getResultList();
+                          
+```
+- 하이버네이트 활용
+- Spring JdbcTemplate, myBatis, jooq 같은 외부 라이브러리 사용하는게 나음
