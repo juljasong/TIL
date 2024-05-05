@@ -309,3 +309,25 @@ List<Member> result = queryFactory
             .fetch();
 ```
 - 커스텀 함수를 쓰려면 Dialect에 명시해야 함
+
+# 스프링 데이터 JPA와 Querydsl
+## 사용자 정의 리포지토리
+1. 사용자 정의 인터페이스 작성
+```java
+    public interface MemberRepositoryCustom
+```
+2. 사용자 정의 인터페이스 구현
+```java
+    public class MemberRepositoryImpl implements MemberRepositoryCustom
+```
+3. 스프링 데이터 리포지토리에 사용자 정의 인터페이스 상속
+```java
+    public interface MemberRepository extends JpaRepository<Member, Long>, MemberRepositoryCustom
+```
+
+## 페이징
+
+```PageableExecutionUtils.getPage(content, pageable, () -> countQuery.fetchCount());```
+
+
+# 스프링 데이터 JPA가 제공하는 Querydsl 기능
