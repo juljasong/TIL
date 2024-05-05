@@ -186,3 +186,126 @@ List<Member> result = queryFactory
 - ```concat()```
 
 # 중급 문법
+## 프로젝션과 결과 반환
+### 기본
+- 프로젝션 : select 대상 지정
+- 프로젝션 대상이 하나
+  - 프로젝션 대상이 하나면 타입을 명확하게 지정할 수 있음
+  - 프로젝션 대상이 둘 이상이면 튜플이나 DTO로 조회
+- 튜플 조회
+  - 프로젝션 대상이 둘 이상일 때 사용
+  - repository나 dao 밑 계층(controller, service)에서는 사용 지양
+
+### DTO 조회
+- 순수 JPA에서 DTO 조회
+  - new 명령어를 사용해야함
+    ```
+    em.createQuery("select new study.querydsl.dto.MemberDto(m.username, m.age) from Member m", MemberDto.class)
+    ```
+- Querydsl Bean 생성(population)
+  - setter 활용
+    ``` 
+    queryFactory.select(Projections.bean(MemberDto.class, member.username, member.age))
+                .from(member)
+    ```
+  - field 활용 (getter/setter 없어도 됨)
+    ``` 
+    queryFactory.select(Projections.fileds(MemberDto.class, member.username, member.age))
+                .from(member)
+    ```  
+  - 생성자 활용
+    ``` 
+    queryFactory.select(Projections.constructor(MemberDto.class, member.username, member.age))
+                .from(member)
+    ```
+  - 필드명 안맞을 때
+    - ```member.username.as("name")``` : as("xxx")에 필드명 넣어주면 매칭됨
+    - ExpressionUtils 사용
+        ```java
+        ExpressionUtils.as(JPAExpressions
+                                .select(member.age.max())
+                                .from(memberSub), "age")
+        ```
+
+### @QueryProjection
+- 생성자에 ```@QueryProjection``` 어노테이션 추가 후 아래와 같이 사용
+    ```java
+    queryFactory
+        .select(new QMemberDto(member.username, member.age))
+        .from(member)
+        .fetch();
+    ```
+    - 컴파일러로 타입을 체크할 수 있으므로 가장 안전한 방법
+    - DTO에 QueryDSL 어노테이션을 유지해야 하는 점과 DTO까지 Q파일을 생성해야 함..
+
+## 동적 쿼리
+### BooleanBuilder 사용
+```java
+    BooleanBuilder builder = new BooleanBuilder(); // 초기값 세팅도 가능
+        if (usernameCond != null)
+            builder.and(member.username.eq(usernameCond));
+
+        if (ageCond != null)
+            builder.and(member.age.eq(ageCond));
+
+        return queryFactory.selectFrom(member).where(builder).fetch();
+```
+
+### Where 다중 파라미터 사용
+```java
+    return queryFactory
+                .selectFrom(member)
+                .where(usernameEq(usernameCond), ageEq(ageCond))
+                // where 절에 null이 들어오면 알아서 무시됨
+                .fetch();   
+```
+```java
+    private Predicate usernameEq(String usernameCond) {
+        return usernameCond != null ? member.username.eq(usernameCond) : null;
+    }
+``` 
+- BooleanExpression을 이용해서 조립 가능
+```java
+    private BooleanExpression allEq(String usernameCond, Integer ageCond) {
+        return usernameEq(usernameCond).and(ageEq(ageCond));
+    }
+```
+
+## 수정, 삭제 벌크 연산
+- 수정
+    ```java
+        queryFactory
+                .update(member)
+                .set(member.username, "비회원")
+                .where(member.age.lt(28))
+                .execute();
+    ```
+    - ```set(member.age, member.age.add(1))``` : 더하기
+    - ```set(member.age, member.age.multiply(2))``` : 곱하기
+- 삭제
+    ```java
+        queryFactory
+                .delete(member)
+                .where(member.age.gt(18))
+                .execute();
+    ```
+
+## SQL function 호출하기
+```java
+    queryFactory
+            .select(Expressions.stringTemplate(
+                    "function('replace', {0}, {1}, {2})",
+                    member.username, "member", "M"))
+            .from(member)
+            .fetch();
+```
+```java
+    queryFactory
+            .select(member.username)
+            .from(member)
+//          .where(member.username.eq(
+//                 Expressions.stringTemplate("function('lower', {0})", member.username)))
+            .where(member.username.eq(member.username.lower()))
+            .fetch();
+```
+- 커스텀 함수를 쓰려면 Dialect에 명시해야 함
