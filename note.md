@@ -121,7 +121,8 @@
       - **fire and forget** :: 메시지 유실 가능성 높음
       - **request reply** :: 메시지 유실 가능성 낮음. request queue, response queue 존재
   - **Pub/Sub** :: **kafka**, RabiitMQ
-    - [Publisher] - [Message Queue] - [Subscriber]
+    - [Publisher/Producer] - [Message Queue] - [Subscriber/Consumer]
+    - Topic : 이벤트를 분류하는 단위. 한 개 이상의 파티션으로 이루어짐
       - Ack
         - 0 : Producer -> Leader Partition에 전송 후 응답값 받지 않음(처리 속도 빠름, 메시지 유실 가능성 있음)
         - 1 : Producer -> Leader Partition에 전송 후 Leader Partition의 응답 받음(중간)
@@ -132,7 +133,21 @@
     - 데이터 전송 배치 처리 (데이터 묶어서 처리) -> 리소스 소모 최소화
     - [Kafka Streams](https://velog.io/@holicme7/Apache-Kafka-Kafka-Streams-%EB%9E%80)
       - Kafka 내부 파이프라인
-    - Zookeeper : Kafka 메타데이터 관리 툴
+    - Zookeeper : Kafka 메타데이터 관리 툴. Broker 관리
+    - Broker : 실제 데이터 저장 장소
+
+# [NginX](https://blog.naver.com/gi_balja/223028077537)
+- 최근 가장 범용적으로 사용되는 웹 서버 프로그램
+- 가벼움
+- 비동기, 논 블로킹, 매번 프로세스 생성 X => 많은 요청이 들어와도 좋은 성능을 보여줌
+- REQ -> TASK -> [TASKS QUEUE] -> work process
+- 프록시 서버로 많이 쓰임
+  - **forward proxy** : 클라이언트 뒤에 붙어 들어오는 요청을 받아줌
+    - 반복 요청이 많은 경우 캐싱 가능
+    - 서버가 클라이언트의 정보를 알기 어려움 -> 개인정보 누설 방지
+  - **reverse proxy** : 요청을 분산하여 서버에 내려줌. 로드밸런서의 역할. DMZ망
+    - 보안 상 이점 : 유저가 서버에 직접 붙을 수 없음
+    - 
 
 # Test
 - 이전
