@@ -107,3 +107,47 @@ public String comp() {
   - ```@isRememberMe()```@ : 현재 사용자가 RememberMe 사용자라면 true
   - ```@isAuthenticated()```@ : 현재 사용자가 익명이 아니라면 (로그인 상태라면) true
   - ```@isFullyAuthenticated()```@ : 현재 사용자가 익명이거나 RememberMe 사용자가 아니라면 true
+
+# Before JWT (Json Web Token)
+## Session
+- 클라이언트로부터 오는 일련의 요청을 하나의 상태로 보고 그 상태를 일정하게 유지하는 기술
+- 클라이언트가 웹 서버에 접속해있는 상태가 하나의 단위
+- [쿠키와 세션의 개념](https://interconnection.tistory.com/74)
+- 서버의 저장소를 사용하기 때문에 트래픽이 많아짐에 따라 서버에 부하를 줄 수 있음
+
+## TCP
+- OSI 7계층
+  - 응용 
+  - 표현 - 암호화, 압축
+  - 세션 - 인증 체크
+  - 전송 - TCP/UDP
+  - 네트워크 - IP
+  - 데이터링크 - WAN/LAN
+  - 물리 - 광 케이블
+
+## CIA
+- **기밀성 ( Confidentiality )**
+  - 정보를 오직 인가된 사용자에게만 허가
+  - 개인정보나 지적 재산권 등 가치 있는 정보
+  - 기업보유 핵심기술 / 민원인들에 대한 개인정보
+- **무결성 ( Integrity )**
+  - 부적절한 정보 변경이나 파기 없이 정확하고 완전하게 보존
+- **가용성 ( Availability )**
+  - 시기적절하면서 신뢰할 수 있는 정보로 접근과 사용할 수 있음
+- 암호화 필요
+  
+## [RSA](https://ko.wikipedia.org/wiki/RSA_%EC%95%94%ED%98%B8)
+- public key : 공개키 
+- private key : 개인키
+- 공개키 -> 개인키 : 암호화
+- 개인키 -> 공개키 : 전자서명
+
+1. 문서를 받아서
+2. A의 공개키로 열어봄
+    - 열리면 -> 인증 O
+      - B의 개인키로 열어봄 => 내용 확인
+    - 안열리면 -> 인증 X 
+
+## RFC(Request for Comments) 문서
+- [RFC란?](https://ko.wikipedia.org/wiki/RFC)
+- 컴퓨터 네트워크 공학 등에서 인터넷 기술에 적용 가능한 새로운 연구, 혁신, 기법 등을 아우르는 메모
