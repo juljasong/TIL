@@ -1,3 +1,71 @@
+# Git 브랜치 전략
+- **여러 개발자**가 **한 개의 저장소**를 사용하는 환경
+- [대표 전략](https://hyeon9mak.github.io/git-branch-strategy/)
+  - GitHub flow
+  - Git flow
+  - GitLab flow
+  - [유튜브~](https://www.youtube.com/watch?v=wtsr5keXUyE)
+
+## GitHub flow
+- master 브랜치 중심
+- 기능 개발 버그 수정 등의 작업용 브랜치를 구분하지 않는 단순한 구조
+- 수시 배포가 일어나는 프로젝트에 유용
+
+### 브랜치 생명주기
+1. 브랜치 생성
+     - master로 부터 기능 추가, 버그 수정 작업을 위한 새로운 브랜치 생성
+     - commit 메시지와 브랜치 이름은 정확하고 간결하게 작성
+     - 기능 추가, 버그 수정 작업의 모든 브랜치는 master에서 나옴
+2. 기능 개발, 버그 수정
+     - 작업하며 기능 별로 commit
+     - commit 메시지는 정확하고 간결하게 작성
+     - commit은 서버의 동일한 브랜치에 push
+3. Pull Request(PR) 생성
+4. 리뷰와 논의
+5. 공개 및 테스트
+     - GitHub에서는 master에 합치기 전 브랜치에서 코드를 공개 및 테스트 할 수 있음
+     - PR 상의와 테스트가 끝난 경우 (테스트 버전으로) 공개 가능
+     - 오류가 발생할 경우 원래의 master 브랜치를 다시 배포하여 roll back
+6. Merge
+
+## Git flow
+- 현재 많은 기업에서 표준으로 사용
+- 크게 5개의 브랜치를 운영
+  - 메인 : master, develop
+  - 보조 : feature, release, hotfix
+- 배포 주기가 길고 팀의 여력이 있는 경우 적합
+
+### 메인 브랜치 (계속 유지)
+- **master** : 제품으로 배포할 수 있는 브랜치
+- **develop** : 개발자들이 개발 하는 브랜치
+
+### 보조 브랜치 (사용 마치면 삭제)
+- **feature**
+  - 기능 구현 시에 사용
+  - 이름 : master, develop, release-\*, hotfix-\* 제외한 이름 가능
+  - develop 브랜치에서 분기
+  - develop 브랜치로 merge
+  - merge 후 삭제
+  - merge 할 땐 ```--no--ff```를 사용하여 기록을 그룹화
+    - Fast-forward 관계에 있어도 Maege commit 생성하여 해당 브랜치가 존재하였다는 정보를 남길 수 있음
+    - commit 기록을 되돌리기 편함
+    - 사용하지 않으면, 브랜치의 존재 여부를 몰라 어떤 commit 부터 해당 기능을 구현했는지 확인 어려움
+- **release**
+  - 다음 버전 출시를 위해 QA를 진행하는 브랜치
+  - 버그 수정 및 버전 번호, 빌드 날짜와 같은 메타 데이터를 준비하며 <u>기능 개발 금지</u>
+  - 이름 : release-*
+  - develop 브랜치에서 분기
+  - develop 브랜치로 merge
+  - merge 할 땐 ```--no--ff```를 사용하여 기록을 그룹화
+  - master로 merge 후에는 tag 명령을 통해 버전 명시
+- **hotfix** : 버그 수정
+  - 버그 발생 시 빠른 수정을 위해 생성하는 브랜치
+  - 버그 수정 중에도 develop에서 계속 개발할 수 있다는 장점
+  - 이름 : hotfix-*
+  - master 브랜치에서 분기
+  - master 브랜치로 merge
+  - master로 merge 후에는 tag 명령으로 이전 버전 보다 높은 버전 명시
+
 # 어플리케이션 아키텍처
 
 ## 계층형 구조 
