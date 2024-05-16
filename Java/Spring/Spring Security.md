@@ -108,6 +108,26 @@ public String comp() {
   - ```@isAuthenticated()```@ : 현재 사용자가 익명이 아니라면 (로그인 상태라면) true
   - ```@isFullyAuthenticated()```@ : 현재 사용자가 익명이거나 RememberMe 사용자가 아니라면 true
 
+## CorsFilter
+```java
+    @Bean
+    public CorsFilter corsFilter() {
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        CorsConfiguration config = new CorsConfiguration();
+        config.setAllowCredentials(true); // 응답 시 json을 js에서 처리할 수 있게 할 지
+        config.addAllowedOrigin("*"); // 모든 ip에 응답 허용
+        config.addExposedHeader("*"); // 모든 header에 응답 허용
+        config.addAllowedMethod("*"); // 모든 http method에 응답 허용
+        source.registerCorsConfiguration("/**", config);
+
+        return new CorsFilter(source);
+    }
+```
+- cors 설정
+- vs ```@CrossOrigin```
+  - 인증 X일 때만 가능
+  - 시큐리티 필터에 등록해야 인증 이후 CORS 처리 가능
+
 # Before JWT (Json Web Token)
 ## Session
 - 클라이언트로부터 오는 일련의 요청을 하나의 상태로 보고 그 상태를 일정하게 유지하는 기술
@@ -150,4 +170,83 @@ public String comp() {
 
 ## RFC(Request for Comments) 문서
 - [RFC란?](https://ko.wikipedia.org/wiki/RFC)
-- 컴퓨터 네트워크 공학 등에서 인터넷 기술에 적용 가능한 새로운 연구, 혁신, 기법 등을 아우르는 메모
+- 컴퓨터 네트워크 공학 등에서 **인터넷 기술**에 적용 가능한 새로운 연구, 혁신, 기법 등을 아우르는 메모
+
+# JWT( Json Web Token )
+- [공식 사이트](https://jwt.io/)
+- [디버거](https://jwt.io/#debugger-io)
+- **Header**
+  ```
+  {
+    "alg": "HS256",
+    "typ": "JWT"
+  }
+  ```
+  - 토큰 유형(JWT)
+  - 사용되는 서명 알고리즘(예: HMAC SHA256 또는 RSA)
+  - Base64Url
+- **Payload**
+  ```
+  {
+    "sub": "1234567890",
+    "name": "John Doe",
+    "admin": true
+  }
+  ```
+  - 클레임을 포함하는 페이로드
+    - Registered claims (옵션)
+      - iss (발행자), exp (만료 시간), sub (주제), aud (청중)
+    - Public claims
+    - Private claims
+      -  사용에 동의한 당사자 간에 정보를 공유하기 위해 생성된 맞춤 클레임
+  - Base64Url(누구나 읽기 가능)
+- **Signature**
+  - 메시지가 도중에 변경되지 않았는지 확인
+  - 개인 키로 서명된 토큰의 경우 JWT의 보낸 사람이 누구인지 확인 가능
+
+## Bearer 인증 방식
+### HTTP 기본 인증
+- HTTP header ( Authorization ) 를 사용하는 인증 방법
+- username:password을 Base64로 인코딩
+- 요청을 가로채서 username과 password 탈취 혹은 수정이 가능 => HTTPS 통신 필요 
+
+### Authorization
+```
+Authorization: <type> <credentials>
+```
+- \<type\>
+  - **Basic**
+    - 사용자 아이디와 암호를 Base64로 인코딩한 값을 토큰으로 사용한다. (RFC 7617)
+  - **Bearer**
+    - JWT 혹은 OAuth에 대한 토큰을 사용한다. (RFC 6750)
+  - **Digest**
+    - 서버에서 난수 데이터 문자열을 클라이언트에 보낸다. 클라이언트는 사용자 정보와 nonce를 포함하는 해시값을 사용하여 응답한다 (RFC 7616)
+  - **HOBA**
+    - 전자 서명 기반 인증 (RFC 7486)
+  - **Mutual**
+    - 암호를 이용한 클라이언트-서버 상호 인증 (draft-ietf-httpauth-mutual)
+  - **AWS4-HMAC-SHA256**
+    - AWS 전자 서명 기반 인증 (링크)
+
+### [토큰의 장단점](https://velog.io/@cada/%ED%86%A0%EA%B7%BC-%EA%B8%B0%EB%B0%98-%EC%9D%B8%EC%A6%9D%EC%97%90%EC%84%9C-bearer%EB%8A%94-%EB%AC%B4%EC%97%87%EC%9D%BC%EA%B9%8C)
+- 장점
+  - 헤더와 페이로드를 가지고 서명 필드를 생성하므로 데이터 변조 후 재전송을 막을 수 있습니다.
+  - stateless 서버를 만들 수 있습니다.
+  - 모바일 어플리케이션에서도 잘 동작합니다.
+  - 인증정보를 다른 웹서비스에 전송할 수 있습니다. (OAuth)
+- 단점
+  - 여전히 누구나 디코딩이 가능하므로 데이터 유출이 발생할 수 있습니다.
+  - 토큰을 탈취당할 경우, 대처하기 어렵다. (유효기간을 기다리거나 token refresh를 해야한다)
+  - JWT의 경우, 토큰의 길이가 길기 때문에 요청이 많아질수록 서버 자원의 낭비가 많아진다.
+  
+### Session
+- 장점
+  - 세션 ID 자체에는 아무런 의미가 없어 탈취되어도 해석할 수 없음
+- 단점
+  - 하이재킹 가능
+    - HTTPS 사용하여 요청 자체를 탈취해도 안의 정보를 읽기 힘들게 하거나,
+    - 세션에 유효시간을 넣어서 방지
+  - 세션 객체가 서버에 저장되어 사용자가 많아질 수록 부하가 걸림
+  - 확장성이 좋지 않음
+    - 여러 대의 서버 컴퓨터를 추가할 경우 각 서버 마다 세션 정보 저장해야 함
+    - 확장 시 모든 서버가 접근할 수 있도록 별도의 중앙 세션 관리 시스템 필요
