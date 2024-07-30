@@ -391,3 +391,424 @@
 ## 응집도 (Cohesion)
 - 모듈의 완성도
 - 모듈 내부의 모든 기능이 단일 목적에 충실하게 모여 있는지
+
+# 포인터
+```go
+  p = &a // 포인터 변수 p가 변수 a를 가리킨다
+```
+
+- 메모리 주소를 값으로 갖는 타입
+- 동일한 메모리 공간을 여러 변수가 가리킬 수 있음(동일 인스턴스)
+- 메모리 복사를 줄일 수 있음
+- 반환값 없이 변수값을 바꿀 수 있음
+- 사용
+  - 복사 X
+  - arg로 받은 값의 변경이 필요할 때
+
+## 포인터 변수 선언
+```go
+  var a int
+  var p *int
+
+  p = &a  // p에 a 메모리 주소 대입
+  *p = 20 // a의 값도 바뀜
+```
+
+## 포인터 변수값 비교
+- ```==``` : 같음 메모리 공간 가리키는 지 확인 가능
+
+## 기본값 nil
+- 포인터 변수값 초기화 x -> nil
+
+## 구조체 생성해 포인터 변수 초기화하기
+```go
+  var data Data
+  var p *Data = &data
+  var p *Data = &Data{}
+
+  p1 := &Data{}
+  var p2 = new(Data)
+```
+
+## new() 내장함수
+- 인수로 타입을 받음
+- ```new(Type)```
+- 내부 필드 값을 채울 수 없음
+
+## Stack / Heap
+- 탈출 검사를 해서 어느 메모리에 할당할 지 결정
+  - 함수 외부로 공개 : Heap
+  - 함수 내부에서만 사용 : Stack
+
+# 문자열 string
+- UTF-8
+- ```"``` : 특수 문자 동작
+- ```\``` : 특수 문자 동작 x. nl 포함한 입력한 그대로 
+
+## rune 
+- 문자 하나 표현 (char)
+- 4바이트 정수 타입 int32의 별칭 타입
+- ```'```
+```go
+  rune := []rune{ 72, 101, 108, 108, 111}
+  str := string(rune)
+```
+
+## 문자열 순회
+```go
+  str := "hello world"
+```
+
+### 1. 인덱스를 사용한 바이트 단위 순회
+```go
+  for i := 0; i < len(str); i++ {
+		fmt.Printf("%T %d %c \t", str[i], str[i], str[i])
+	}
+```
+
+### 2. []rune으로 타입 변환 후 한 글자씩 순회
+```go
+  arr := []rune(str)
+	for i := 0; i < len(arr); i++ {
+		fmt.Printf("%T %d %c \t", str[i], str[i], str[i])
+	}
+```
+
+### 3. range 키워드 이용한 한 글자씩 순회
+```go
+  for _, v := range str {
+		fmt.Printf("%T %d %c \t", v, v, v)
+	}
+```
+
+## 문자열 비교
+- ```==``` : 같으면 true
+- ```!=``` : 다르면 true
+
+## 문자열 합산
+- string을 합산하면 java와 같이 인스턴스가 왕왕 생겨남
+- ```Builder``` 사용
+  ```go
+    var builder strings.Builder
+
+    builder.WriteString("hello")
+    builder.WriteString(" ")
+    builder.WriteString("world")
+
+    fmt.Println(builder.String())
+  ```
+
+# 패키지
+- 코드를 묶는 가장 큰 단위
+- 타입, 필드 함수에 대한 접근 제공
+- 연관 함수, 타입 등의 코드를 패키지로 묶어 배포 가능
+- 정리
+  - 함수 : 코드 블록
+  - 구조체 : 데이터
+  - 패키지 : 함수, 구조체와 그 외 코드
+- main 패키지(필수 요소)/외부 패키지(선택 요소)
+- ```import``` : 패키지 초기화 시작 (전역 변수 초기화 -> init()함수 호출)
+
+## main 패키지
+- 필수
+- 프로그램 시작점
+- Load : 프로그램을 메모리를 올리는 것
+
+## 그 외 패키지
+- main 외 다른 패키지
+- fmt(표준 입출력), crypto(암호화), net(네트워크), ..
+
+## 유용한 패키지 찾기
+- [Standard library](https://golang.org/pkg)
+- [Awesome Go](https://github.com/avelino/awesome-go)
+
+## 겹치는 패키지 문제
+- 별칭 주기
+```go
+  import (
+    ttemplate "text/template"
+    htemplate "html/template"
+  )
+```
+
+## 사용하지 않는 패키지 포함하기
+```go
+  import(
+    "database/sql"
+    _ "fmt"
+  )
+```
+- init()이 필요한 경우
+
+## Go 모듈
+- Go 패키지들을 모아놓은 Go 프로젝트 단위
+- Go 1.16 버전 부터 기본
+- **```go build```를 하려면 반드시 Go 모듈 루트 폴더에 go.mod 파일 필요**
+- ```go mod tidy``` : Go 모듈에 필요한 패키지 찾아 다운로드
+
+## 패키지명과 패키지 외부 공개
+- 패키지명은 쉽고 간단하게
+- 모든 문자를 소문자로 할 것을 권장
+- 패키지 전역으로 선언된 첫 글자가 대문자로 시작되는 모든 변수, 상수, 타입, 함수, 메서드는 패키지 외부로 공개
+
+# 슬라이스
+- 동적 배열 : 자동으로 배열 크기를 증가시키는 자료구조
+- 장점
+  - 길이가 요소 개수에 따라 자동으로 증가해 관리 편리
+  - 슬라이싱 기능으로 배열의 일부를 나타내는 슬라이스를 만들 수 있어 유용
+
+## 슬라이스 선언 및 초기화
+```go
+  var slice []int
+
+  // 1. {} 로 초기화
+  var slice1 = []int{1, 2, 3}
+  var slice2 = []int{1, 5:2, 10:3}
+
+  // 2. make()로 초기화
+  var slice3 = make([]int, 3)
+```
+- 배열의 개수 적지 않고 선언
+- 초기화 하지 않으면 길이가 0인 슬라이스 만들어짐
+
+### make()를 이용한 선언
+```go
+  var slice1 = make([]int, 3)     // len : 3, cap : 3 (3개는 0으로 채워짐)
+  var slice2 = make([]int, 3, 5)  // len : 3, cap : 5 (나머지 2개는 빈 배열)
+```
+
+## append() - 슬라이스 요소 추가
+```go
+  slice1 = append(slice1, 4, 5, 6, 7)        // 추가만
+  appendSlice := append(slice1, 4, 5, 6, 7)  // 복사 + 추가
+```
+
+### 슬라이스와 배열 동작 차이
+- 배열/슬라이스를 다른 값에 대입 시
+  - 배열 : 값 복사
+  - 슬라이스 : 포인터 복사(실제 배열 복사 X)
+
+### append() 사용 시 발생하는 문제1
+- append() 호출 시
+  1. 슬라이스에 값 추가할 수 있는 빈 공간 있는지 확인(cap - len)
+  2. (cap - len) > 추가하는 값 개수 : 배열 뒷 부분에 값 추가 후 len 값 증가
+
+```go
+  var slice1 = make([]int, 3, 5)
+	slice1[1] = 10
+	slice1[2] = 20
+
+	slice2 := append(slice1, 30, 40)
+	fmt.Println(slice2)
+
+	slice1[1] = 100
+	slice1 = append(slice1, 300)
+
+	fmt.Println(slice1)
+	fmt.Println(slice2)
+```
+
+## 슬라이싱
+- 배열의 일부를 집어내는 기능
+- ```array[startIdx:endIndex]```
+- 시작 인데스 ~ 끝 인덱스 -1 까지의 배열 일부를 나타내는 슬라이스 반환
+- 메모리 주소로 가지고 있음
+
+## 슬라이스 복제
+```go
+  // 1. 복제
+  slice1 := []int{1, 2, 3, 4, 5}
+  slice2 := make([]int, len(slice1))
+  
+  for i, v := range slice1 {
+    slice2[i] = v
+  }
+
+  // 2. append() 이용
+  slice2 := append([]int{}, slice1...)
+
+  // 3. copy() 이용
+  cnt := copy(slice2, slice1) // slice1을 slice2에 복사, cnt엔 복사된 요소 개수 들어감
+```
+
+## 요소 삭제
+```go
+  slice = append(slice[:idx], slice[idx+1:]...)
+```
+
+## 요소 추가
+```go
+  slice = append(slice[:idx], append([]int{100}, slice[idx:]...)...)
+  
+  // 개선
+  slice = append(slice, 0)
+  copy(slice[idx+1:], slice[idx:]) // 복사하는 위치, 복사 대상
+  slice[idx] = 100
+```
+
+## 슬라이스 정렬
+### Int 정렬
+```go
+  s := []int{5, 2, 4, 7, 8}
+  sort.Ints(s)
+```
+
+### 구조체 슬라이스 정렬
+- ```Len()```, ```Less()```, ```Swap()```
+```go
+  
+type Student struct {
+	Name string
+	Age  int
+}
+
+// []Student의 별칭 타입
+type Students []Student
+
+func (s Students) Len() int {
+	return len(s)
+}
+
+// 나이 비교
+func (s Students) Less(i, j int) bool {
+	return s[i].Age < s[j].Age
+}
+
+func (s Students) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
+
+func main() {
+	s := []Student{
+		{"xxx", 11}, {"bbb", 22}, {"ddd", 8}, {"ccc", 30},
+	}
+
+  // 정렬
+	sort.Sort(Students(s))
+	fmt.Println(s)
+}
+
+```
+
+# 메서드
+- 함수의 일종
+- Go에는 클래스 x => 구조체 밖에 메서드 지정
+- 구조체 밖에 메소드 정의 시, 리시버라는 특별한 기능 사용
+- 효과
+  - 메서드를 사용해 데이터와 기능을 묶어 응집도를 높임
+  - 코드 재사용성을 높임
+  - 모듈화로 코드의 가독성이 좋아짐
+
+## 리시버
+- 구조체 밖에 메서드가 있어 메서드가 어느 구조체에 속하는 지 표시할 방법 필요
+- 메서드가 속하는 타입을 알려주는 기법
+
+## 메서드 선언
+```go
+func (r Rabbit) info() int { // Rabbit 타입에 속하는 메서드
+  return r.width * r.height
+}
+```
+- 리시버가 있으면 메서드, 없으면 일반 함수
+
+## 별칭 리시버 타입
+- int와 같은 내장 타입들도 별칭 타입을 활용해 메서드를 가질 수 있음
+```go
+  // 사용자 정의 별칭 타입
+  type customInt int
+
+  // customInt 별칭 타입을 리시버로 갖는 메서드
+  func (a customInt) add(b int) int {
+    return int(a) + b
+  }
+```
+
+## 포인터 메서드 vs 값 타입 메서드
+- 포인터 메서드를 호출하면 포인터가 가리키고 있는 메모리의 주솟값이 복사됨 -> **인스턴스 중심 메서드**
+- 값 타입 메서드를 호출하면 리시버 타입의 모든 값이 복사됨 -> **값 중심 메서드**
+
+# 인터페이스
+- 구현을 포함하지 않는 메서드 집합
+- 구체화된 타입이 아닌 인터페이스만 가지고 메서드를 호출할 수 있음 => 추후 프로그램 요구사항 변경 시 유연하게 대처 가능
+- 효과
+  - 객체 간 상호작용 정의 가능
+  - 덕 타이핑으로 서비스 사용자 중심의 코딩 가능
+  - 인터페이스를 타입 변환해 구체화된 타입으로 변환 가능
+- 사용 이유
+  - 인터페이스만 가지고 메서드 호출 가능 -> 큰 코드 수정 없이 필요에 따라 구체화된 객체를 바꿔 사용할 수 있게 됨
+
+## 선언
+```go
+  type InterfaceName interface {
+    Fly()
+    Walk(distance int) int
+  }
+```
+- 타입명
+- 인터페이스 이름
+- interface : 인터페이스 선언 키워드
+- 메서드 집합
+  - 메서드는 반드시 메서드명이 있어야 함
+  - **매개변수와 반환이 다르더라도 이름이 같은 메서드는 있을 수 없음**
+  - 인터페이스에서는 메서드 구현을 포함하지 않음
+
+## 추상화 계층
+- 추상화(abstraction) : 내부 동작을 감춰서 서비스를 제공하는 쪽과 사용하는 쪽 모두에게 자유를 주는 방식
+- 인터페이스는 추상화를 제공하는 추상화 계층(abstraction layer)
+
+## 덕 타이핑
+- 어떤 타입이 인터페이스를 포함하고 있는지 여부를 결정할 떄 덕 타이핑 방식 사용
+- 덕 타이핑 방식 : 타입 선언 시 인터페이스 구현 여부를 명시적으로 나타낼 필요 없이 **인터페이스에 정의한 메서드 포함 여부 만으로 결정하는 방식**
+
+## 서비스 사용자 중심 코딩
+- 인터페이스를 패키지를 이용하는 쪽에서 만들게 됨
+- 덕 타이핑 -> 서비스 제공자가 인터페이스를 정의할 필요 없이 구체화된 객체만 제공하고 서비스 이용자가 필요에 따라 인터페이스를 정의해서 사용할 수 있음
+
+## 인터페이스의 기능
+### 포함된 인터페이스
+```go
+  type Reader interface {
+    Read() (n int, err error)
+    Close() error
+  }
+
+  type Writer interface {
+    Writer() (n int, err error)
+    Close() error
+  }
+
+  type ReadWriter interface {
+    Reader
+    Writer
+  }
+```
+
+### 빈 인터페이스
+- ```interface{ }``` : 메서드를 가지고 있지 않은 빈 인터페이스
+- 어떤 값이든 받을 수 있는 함수, 메서드, 변수값 만들 떄 사용
+
+### 인터페이스 기본값 nil
+- 유효하지 않은 메모리 주소를 나타내는 nil
+
+## 인터페이스 변환하기
+### 구체화된 다른 타입으로 타입 변환하기
+- 인터페이스 변수를 다른 구체화된 타입으로 변환 가능
+- ```newType := interfaceVar.(NewType)```
+- 해당 타입이 인터페이스 메서드 집합을 포함하고 있어야 함 (x -> 컴파일ㅇ 에러)
+
+### 다른 인터페이스로 타입 변환하기
+- 변경되는 인터페이스가 변경 전 인터페이스를 포함하지 않아도 됨
+- 다만, 인터페이스가 가리키고 있는 실제 인스턴스가 변환하고자 하는 다른 인터페이스를 포함해야 함
+
+### 타입 변환 성공 여부 반환
+- 타입 변환 반환값을 두 개의 변수로 받으면
+- 타입 변환 가능 여부를 두 번째 반환값(bool)로 알려줌
+- 타입 반환이 실패해도 false로 반환될 뿐, 런 타임 에러 발생 X
+```go
+  var a Interface
+  t, ok := a.(ConcreteType)
+
+  if c, ok := reader.(Closer); ok {
+    ...
+  }
+```
