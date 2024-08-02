@@ -812,3 +812,167 @@ func (r Rabbit) info() int { // Rabbit 타입에 속하는 메서드
     ...
   }
 ```
+
+# 함수 고급편
+## 가변 인수 함수
+- ```...``` 키워드 이용해 가변 인수 처리 가능
+```go
+  func sum(nums ...int) int {
+    sum := 0
+
+    for _, v := range nums {
+      sum += v
+    }
+    return sum
+  }
+```
+
+## defer 지연 실행
+- 함수 종료 직전
+- 파일이나 소켓 핸들 처럼 OS 내부 자원 사용하는 경우
+- ```defer 명령문```
+- stack. 호출 순 역순
+
+## 함수 타입 변수
+```go
+  func getOperator(op string) func(int, int) int
+```
+- ```func(int, int) int```가 return 함수
+- ```type opFunc func(int, int) int```처럼 타입을 사용하면 ```func getOperator(op string) opFunc```과 같이 줄일 수 있음
+
+## 함수 리터럴
+- 이름 없는 함수
+- 함수명 적지 않고 함수 타입 변숫값으로 대입되는 함숫값
+- 다른 언어에서는 익명 함수 or Lambda라고도 함
+```go
+  func getOperator(op string) func(int, int) int {
+
+	if op == "+" {
+		return func(a, b int) int {
+			return a + b
+		}
+	} else if op == "*" {
+		return func(a, b int) int {
+			return a * b
+		}
+	} else {
+		return nil
+	}
+
+}
+```
+```go
+  mul := func(a, b int) int {
+		return a * b
+	}(1,5)      // 직접 호출
+
+  mul(1, 5)   // 함수 호출
+```
+
+### 함수 리터럴 내부 상태
+- 필요 변수를 내부 상태로 가질 수 있음
+
+# 자료구조
+- 여러 데이터를 저장하는 구조
+
+## 리스트
+```go
+  import "container/list"
+
+  v := list.New()       // 새로운 리스트 생성
+  e4 := v.PushBack(4)   // 리스트 뒤에 요소 추가
+  e1 := v.PushFront(1)  // 리스트 앞에 요소 추가
+  v.InsertBefore(3, e4) // e4 요소 앞에 요소 삽입
+  v.InsertAfter(2, e1)  // e1 요소 뒤에 요소 삽입
+
+  for e := v.Front(); e != nil; e = e.Next() {
+    ..  
+  }
+
+  for e := v.Back(); e != nil; e = e.Prev() {
+    ..
+  }
+```
+- 비연속 메모리 사용해 요소 저장
+- 요소 삽입과 삭제가 배열 보다 빠름
+- Double Linked List
+
+### 포인터로 연결된 요소
+```go
+  type Element struct {     // 구조체
+	Value interface{}       // 데이터 저장 필드
+	Next  *Element          // 다음 요소 주소 저장하는 필드
+	Prev  *Element          // 이전 요소 주소 저장하는 필드
+}
+```
+- 데이터를 담고 있는 요소들을 포인터로 연결한 자료구조
+- 서로 떨어진 Element 인스턴스들이 Next/Prev 포인터로 연결된 불연속 자료구조
+
+### 데이터 지역성 Data Locality
+- 데이터가 밀집한 정도
+- 필요한 데이터가 인접해 있을 수록 캐시에 의해 처리 속도가 빨라짐
+- 삽입 및 삭제가 빈번하면 리스트가 배열 보다 좋다고 함
+- But, 요소 수가 적으면? 데이터 지역성 때문에 오히려 배열이 리스트 보다 효율적임
+
+### Queue / Stack
+- **Queue** : 보통 리스트로 구현(FIFO)
+- **Stack** : 보통 배열로 구현 (LIFO)
+
+## 링
+```go
+  import "container/ring"
+
+  r := ring.New(5)    // 요소가 5개인 링 생성
+  n := r.Len()        // 링 길이 반환
+
+  for i := 0; i < n; i++ {
+    r.Value = 'A' + i
+    r = r.Next()
+  }
+```
+- 환형 리스트
+- 처음과 끝이 연결된 리스트
+- 크기 고정
+
+## 맵
+- ```map[key]value```
+- 키와 값 형태로 자료가 저장되는 자료구조
+- 딕셔너리 dictionary, 해시테이블 hash table, 해시맵 hash map 이라고도 함
+- container 패키지가 아닌 **Go 기본 내장** 타입(사용 빈도 높음)
+```go
+  m := make(map[string]string)
+	m["key1"] = "value1"
+	m["key2"] = "value2"
+	m["key3"] = "value3"
+
+	fmt.Printf("%s : %s", "key1", m["key1"])
+
+  delete(m, "key1")
+```
+
+### 맵 순회
+```go
+  for k, v := range m {
+		fmt.Println(k, " : ", v)
+	}
+```
+- 입력한 순서 X
+- 정렬 X
+
+### 맵, 배열, 리스트 속도 비교
+- 맵
+  - 삭제, 추가, 읽기에서 요소 개수 상관 없이 속도 일정
+  - 빠름
+  - 입력한 순서 보장 x
+  - 상대적으로 메모리 많이 차지
+- 배열
+  - 추가, 삭제에서 요소 개수가 많아질 수록 오래 걸림
+- 리스트
+  - 읽기에서 요소 개수 많아질 수록 오래 걸림
+
+### 해시 함수
+- hash : 잘게 부수다
+- 해시 함수
+  - 같은 입력이 들어오면 같은 결과가 나옴
+  - 다른 입력이 들어오면 되도록 다른 결과가 나옴
+  - 입력값의 범위는 무한대이고 결과는 특정 범위를 가짐
