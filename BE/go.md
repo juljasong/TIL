@@ -1154,3 +1154,208 @@ wg.Wait()   // 모든 작업이 완료될 때 까지 대시
   - ex. 100개의 파일을 읽어서 분석할 땐 파일 별로 고루틴을 할당해서 수행하기
 - **역할을 나누는 방법**
   - 채널 이용
+
+# 채널 & 컨텍스트
+- Go 언어에서 동시성 프로그래밍을 도와주는 기능
+- **채널** : 고루틴 간 메시지를 전달하는 메시지 큐
+  - 뮤텍스 없이 동시성 프로그래밍 가능
+- **컨텍스트** : 고루틴에 작업 요청 시 작업 취소나 작업 시간 등을 설정할 수 있는 작업 명세서 역할
+  - 작업 요청 시 작업 시간, 취소, 추가 데이터 등을 지정할 수 있음
+
+## 채널
+- 메시지 큐의 메시지들은 차례대로 쌓이고 메시지를 읽을 땐 처음 들어온 메시지부터 차례대로 읽힘(FIFO)
+- **크기**
+  - default : 0
+  - 채널에 들어온 데이터를 담아둘 곳이 없음
+  - 채널에 데이터를 넣었지만 빼가지 않으면 데이터가 빠지기 까지 대기함
+- **버퍼를 가진 채널**
+    ```go
+      var chan string message = make(chan string, 2)
+    ```
+    - 버퍼가 2인 채널 생성
+    - 2개 까지의 데이터 보관 가능
+
+### 채널 인스턴스 생성
+```go
+  var messages chan string = make(chan string)
+```
+- make() 함수로 생성
+- 채널 타입 : chan 키워드 + 메시지 타입 
+
+### 채널에 데이터 넣기
+```go
+   messages <- "This is a message"
+```
+- ```<-``` 연산자 이용
+
+### 채널에서 데이터 빼기
+```go
+  var msg string = <- messages
+```
+- ```<-``` 연산자 이용
+
+### 채널에서 데이터 대기
+- 채널에 데이터가 없어서 무한 대기 중인 경우 데드록 발생
+- 채널에 있는 데이터를 모두 사용한 다음에는 ```close(ch)```로 채널을 닫고 채널이 닫혔음을 알려주어야 함
+
+### select문
+```go
+  select {
+    case n := <- ch1 :    // ch1에서 데이터를 빼낼 수 있을 때 실행
+      ...
+    case n2 := <- ch2 :   // ch2에서 데이터를 빼낼 수 있을 때 실행
+      ...
+    case ...
+  }
+```
+- 채널에 데이터가 없는 경우 다른 작업을 하거나 여러 채널을 동시에 대기하고 싶을 때 사용
+
+### 일정 간격으로 실행
+```go
+func square(wg *sync.WaitGroup, ch chan int) {
+  // 일정 시간 간격 주기로 신호를 보내주는 채널 생성하여 반환하는 함수
+  tick = time.Tick(time.Second)
+  // 현재 시간 이후 일정 시간 경과 후 신호를 보내주는 채널 생성해 반환하는 함수 
+  terminate := time.After(10 * time.Second)
+
+  for {
+    select {
+      case <- tick:
+        fmt.Println("Tick")
+      case <- terminate:
+        fmt.Println("Terminated!")
+        wg.Done()
+        return
+      case n := <- ch:
+        fmt.Printf("Square: %d\n", n*n)
+        time.Sleep(time.Second)
+    }
+  }
+}
+
+```
+
+## 채널로 생성자 소비자 패턴(Producer consumer Pattern)구현
+```go
+import (
+	"fmt"
+	"sync"
+	"time"
+)
+
+type Car struct {
+	Body  string
+	Tire  string
+	Color string
+}
+
+var wg sync.WaitGroup
+var startTime = time.Now()
+
+func main() {
+	tireCh := make(chan *Car)
+	paintCh := make(chan *Car)
+
+	fmt.Println("Start Factory")
+
+	wg.Add(3)
+	go MakeBody(tireCh)
+	go InstallTire(tireCh, paintCh)
+	go PaintCar(paintCh)
+
+	wg.Wait()
+	fmt.Println("Close the factory")
+
+}
+
+func MakeBody(tireCh chan *Car) {
+	tick := time.Tick(time.Second)
+	after := time.After(10 * time.Second)
+
+	for {
+		select {
+		case <-tick:
+			car := &Car{}
+			car.Body = "Sports car"
+			tireCh <- car
+		case <-after:
+			close(tireCh)
+			wg.Done()
+			return
+		}
+
+	}
+}
+
+func InstallTire(tireCh, paintCh chan *Car) {
+	for car := range tireCh {
+		time.Sleep(time.Second)
+		car.Tire = "Winter tire"
+		paintCh <- car
+	}
+	wg.Done()
+	close(paintCh)
+}
+
+func PaintCar(paintCh chan *Car) {
+	for car := range paintCh {
+		time.Sleep(time.Second)
+		car.Color = "Red"
+		duration := time.Now().Sub(startTime)
+		fmt.Printf("%.2f Complete Car: %s %s %s\n", duration.Seconds(), car.Body, car.Tire, car.Color)
+	}
+	wg.Done()
+}
+```
+- 한 쪽에서 데이터를 생성해서 넣어주면 다른 쪽에서 생성된 데이터를 빼서 사용하는 방식
+
+## 컨텍스트 
+- context 패키지에서 제공하는 기능
+- 작업을 지시할 때 작업 가능 시간, 작업 취소 등의 조건을 지시할 수 있는 작업 명세서 역할
+- 새로운 고루틴으로 작업을 시작할 때 일정 시간 동안만 작업을 지시하거나 외부에서 작업을 취소할 때 사용
+- 작업 설정에 관한 데이터 전달도 가능
+
+### 작업 취소가 가능한 컨텍스트
+```go
+func main() {
+
+	wg.Add(1)
+	ctx, cancel := context.WithCancel(context.Background()) // 컨텍스트 생성
+	go PrintEverySecond(ctx)
+	time.Sleep(5 * time.Second)
+	cancel() // 취소
+
+	wg.Wait()
+}
+
+func PrintEverySecond(ctx context.Context) {
+	tick := time.Tick(time.Second)
+	for {
+		select {
+		case <-ctx.Done():
+			wg.Done()
+			return
+		case <-tick:
+			fmt.Println("Tick")
+		}
+	}
+}
+```
+
+### 작업 시간을 설정한 컨텍스트
+```go
+  ctx, cancel := context.WithTimeout(context.Background(), 3 * time.Second)
+```
+
+### 특정 값을 설정한 컨텍스트
+```go
+  ctx, cancel := context.WithValue(context.Background(), "key", "value")
+
+  ctx.Value("key")
+```
+
+### 컨텍스트 안에 컨텍스트
+```go
+  ctx, cancel := context.WithCancel(context.Background()) // 취소 기능이 있는 컨텍스트
+  ctx = context.WithValue(ctx, "key", "value")  // 값을 설정한 컨텍스트로 기존 컨텍스트를 감싼다
+```
