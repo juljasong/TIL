@@ -1359,3 +1359,376 @@ func PrintEverySecond(ctx context.Context) {
   ctx, cancel := context.WithCancel(context.Background()) // 취소 기능이 있는 컨텍스트
   ctx = context.WithValue(ctx, "key", "value")  // 값을 설정한 컨텍스트로 기존 컨텍스트를 감싼다
 ```
+
+# 제네릭 프로그래밍
+```go
+  func add[T constraints.Integer | constraints.Float](a, b T) T {
+    return a + b
+  }
+```
+- Go 1.18 버전에서 추가
+- 하나의 함수나 타입이 여러 타입에 대해 동작할 수 있도록 정의할 수 있음
+- 하나의 코드로 여러 타입에 대해 재사용 가능
+
+## 제네릭 함수
+```go
+  func funcName[T constraint](p T) { }
+```
+- T : 파라미터 이름
+- constraint : 타입 제한
+  - 필요에 따라 ```,```로 구분하여 여러 개 적을 수 있음
+
+### 동작 방식
+```go
+  func Print[T any](a, b T) {
+    fmt.Println(a, b)
+  } 
+
+  Print(1, 2)             // ok
+  Print(3.14, 1.43)       // ok
+  Print("Hello", "World") // ok
+
+  Print(1, "Hello")       // error : a, b의 타입이 다르기 때문
+```
+- 해결방법
+```go
+  func Print[T1 any, T2 any](a T1, b T2) {
+    fmt.Println(a, b)
+  } 
+```
+
+### 타입 제한
+- ```any``` : 모든 타입 가능
+- ```int8/16/32/64```
+- ```go
+  type Integer interface {
+    int8 | int16 | int32 | int64 | int
+  }
+
+  func add(T Integer)(a, b T) T {
+    return a + b
+  }
+  ```
+  - 타입 제한 정의 시 ```interface``` 키워드 사용
+- ```golang.org/x/exp/constraints``` 패키지 : 이미 정의된 몇 가지 타입 제한 등을 제공
+- ```~int8```과 같이 ```~``` 포함해서 표시하면 모든 별칭 타입까지 포함
+
+## 제네릭 타입
+```go
+type Node[T any] struct {
+  val T
+  next *Node[T]
+}
+```
+- 타입 파라미터는 함수 뿐 아니라 타입 선언 시에도 사용
+
+## 인터페이스와 제네릭의 차이
+- 인터페이스 : 모든 타입 값을 가질 수 있으나, 값 사용 시 실제 타입값으로 타입 변환 필요
+  - boxing/unboxing의 과정이 필요 -> 많아지면 성능 상 문제가 되기도
+- 제네릭 : 타입 파라미터에 의해 필드 타입이 결정되어 값을 사용할 때 타입 변환 필요 X
+  - 하나의 함수를 서로 다른 타입으로 호출하는 것이 아닌, 다른 함수를 호출하는 것
+  - 컴파일 타임에 사용한 타입 파라미터 별로 새로운 함수나 타입을 생성해서 사용
+  - 제네릭이 많아지면 컴파일 타입에 생성해야 할 함수와 타입 개수 늘어남 -> 컴파일 시간 길어짐, 생성되는 코드 양이 증가되어 실행 파일 크기가 늘어남
+
+## 언제 제네릭 프로그래밍을 사용해야?
+- 코드 재사용성에 도움
+- 코드 가독성은 떨어짐
+- "동작하는 코드 먼저, 제네릭은 나중에"
+
+### 제네릭을 사용하기 좋은 곳
+- 자료구조 Data structure
+- 다양한 타입에 대해 비슷한 동작을 하는 경우
+
+### 제네릭을 사용하기 좋지 않은 곳
+- 객체 타입이 아닌 객체의 기능이 강조되는 곳
+
+## 제네릭을 사용해 만든 기본 패키지
+### 1. slices
+
+#### 정렬된 경우
+```go
+func BinarySearch[S ~[]E, E cmp.Ordered](x S, target E) (int, bool)
+```
+- 정렬된 슬라이스에서 target 값의 위치를 찾는 함수
+- x S -> index, targer E -> true/false
+
+#### 정렬되지 않은 경우
+```go
+func BinarySearchFunc[S ~[]E, E, T any](x S, target E, cmp func(E, T) int) (int, bool)
+```
+- 엘리먼트 타입이 ```cmp.Ordered``` 조건을 만족하지 않는 슬라이스 일 때
+- 대소 비교를 할 수 있는 ```cmp()``` 함수를 인수로 받아 대소 비교 처리 필요
+```go
+func CompareFunc[S1 ~[]E1, S2 ~[]E2, E1, E2 any](s1 S1, s2 S2, cmp func(E1, E2) int) int
+```
+- ```func Concat[S ~[]E, E any](slices ...S) S``` : 여러 개의 슬라이스를 합쳐 하나의 슬라이스로 만들어줌
+- ```func Contains[S ~[]E, E comparable](s S, v E) bool``` : 슬라이스 안에 특정 요소 값이 포함되어 있는지 여부를 반환
+- ```func ContainsFunc[S ~[]E, E any](s S, f func(E) bool) bool``` : ```==```  비교가 불가능한 타입도 쓸 수 잇도록..
+
+### 2. maps
+- ```func Clone[M ~map[K]V, K comparable, V any](m M) M``` : 맵 복제해서 새로운 맵 생성하는 함수
+- ```func Copy[M1 ~map[K]V, M2 ~map[K]V, K comparable, V any](dst M1, src M2)``` : 두 번째 인수 src 맵의 모든 요소들의 키와 값을 첫 번째 인수인 dst 맵으로 복사. 키가 같은 경우 src 값으로 덮어씀. 대입 연산으로 값을 복사하여 복사된 값들은 같은 메모리 공간을 가리키고 있음
+- ```func Equal [M1, M2 ~map[K]V, K, V comparable](m1 M1, m2 M2) bool``` : 두 맵이 서로 같은 요소 값들을 가지고 있는지 비교. 모든 키와 값이 같아야 함. 
+- ```func EqualFunc[M1, M2 ~map[K]V, V comparable]() bool``` : ```==``` 연산을 제공하지 않는 타입이거나, 같은 값 타입이 아닐 경우 사용.
+
+# 테스트와 벤치마크
+## 테스트 코드
+- 작성한 코드를 테스트하는 코드
+- 장점
+  - 테스트 코드를 손쉽게 작성 가능
+  - ```go test```를 통해 간단하게 전체 테스트 가능
+    - ```go test -run 테스트명``` : 일부 테스트만 실행
+    - 
+  - 버그를 사전 방지
+- 3가지 작성 규약
+  1. 파일명이 ```_test.go```로 끝나야 함
+  2. ```testing``` 패키지 임포트
+  3. 테스트 코드는 ```func TestXxxx(t *testing.T)``` 형태여야 함
+- 
+
+### 테스트를 돕는 외부 패키지
+```go
+import (
+	"testing"
+	"github.com/stretchr/testify/assert"
+)
+
+func TestSqaure(t *testing.T) {
+	assert := assert.New(t)
+	assert.Equal(81, square(9), "sqaure(9) should be 81")
+}
+```
+- ```stretchr/testify``` : 테스트하고 테스트 실패를 알릴 수 있는 다양한 함수 제공
+- 설치 : ```go get github.com/stretchr/testify```
+- ```import "github.com/stretchr/testify"```
+- 지원 메서드
+  - ```Equal()``` : expected와 actual 두 값 비교하여 다를 경우 테스트 실패 
+  - ```NotEqual()``` : expected와 actual이 같으면 테스트 실패
+  - ```NotEqaulf()``` : expected와 actual이 같으면 테스트 실패
+  - ```Greater()``` : e1이 e2 보다 크지 않으면 테스트 실패
+  - ```Len()``` : object 항목 개수가 length가 아니면 테스트 실패
+  - ```NotNilf()``` : object가 nil이면 테스트 실패
+  - ```Nil()``` 
+  - ```NotNil()``` 
+- 그 외 유용한 기능
+  - mock : 테스트용 목업을 만드는 데 사용
+    - 모듈의 행동을 가장하는 목업 객체 제공
+  - suite : 테스트 시작과 종료 작업 도와줌
+    - 테스트 준비 작업이나 테스트 종료 후 후처리 작업을 쉽게 할 수 있도록 도와줌
+
+### 테스트 주도 개발 (TDD)
+- 테스트의 중요성 커짐
+  1. 과거에 비해 프로그램 규모가 커짐
+  2. 과거에 비해 고가용성(high availabilty)에 대한 요구사항이 높아짐
+       - 프로그램이 얼마나 오랫동안 정상 동작 하는가
+- 프로그램 구현 전에 테스트 코드 부터 작성 -> 당연히 실패
+- 테스트 코드가 자연적으로 촘촘해짐
+
+#### 블랙박스 테스트
+- 제품 내부 오픈하지 않은 상태에서 진행되는 테스트
+- 사용성 테스트(usability test)라고도 함
+- 전문 테스터, QV, QA 직군에서 주로 담당
+
+#### 화이트박스 테스트
+- 프로그램 내부 코드 직접 검증하는 방식
+- 유닛 테스트(unit test, 단위 테스트)라고도 함
+- 프로그래머가 직접 테스트 코드를 작성하여 내부 테스트를 검사하는 방식 
+
+## 벤치마크 코드
+- 코드 로직의 성능 측정하는 코드
+- 성능 측정 코드를 손쉽게 작성 가능
+- 성능 비교를 통해 더 빠른 로직이 무엇인지 알 수 있음
+- ```go test -bench``` 명령으로 성능 검사 가능
+- 3가지 작성 규약
+  1. 파일명이 ```_test.go```로 끝나야 함
+  2. ```testing``` 패키지 임포트
+  3. 테스트 코드는 ```func BenchmarkXxxx(t *testing.B)``` 형태여야 함
+
+# 프로파일링
+- 프로그램 성능 지표를 프로그램이 실행 중에 실시간으로 측정 기록하는 것
+- 프로그램 실행 시간, 메모리 사용량, 함수 호출 시간/빈도, 메모리가 생성되는 시점과 빈도 등
+- 프로파일링 도구를 통해 수집된 데이터는 파일 형태로 저장되어 분석 툴을 사용해 성능 지표들을 분석하게 됨
+- 프로그램 성능 지표를 수집해 프로그램 성능을 최적화하는 데 주로 사용됨
+- 병목 지점들과 병목 지점들이 발생하는 원인을 파악하는 데 도움
+- 장단점
+  - 프로파일링을 통해 여러 성능 지표를 수집하고 분석할 수 있음
+  - 전체 성능 저하를 일으키는 병목 지점 파악 가능
+  - 프로파일링 툴을 적절히 사용해야 함
+- ```runtime/pprof``` 패키지 사용
+
+## 특정 구간 프로파일링
+- 성능 개선을 원하는 특정 함수나 구간을 조사할 때 유용
+- 성능 측정을 시작하길 원하는 곳에 ```pprof.StartCPUProfile()``` 함수 call
+- 성능 측정을 끝내는 곳에 ```pprof.StopCPUProfile()``` 함수 call
+```shell
+$ go tool pprof @.prof
+$ top
+$ web # Graphviz 필요
+```
+
+## 서버에서 프로파일링
+- ```net/http/pprof``` : 웹 프로파일링 패키지
+- ```http://localhost:8080/debug/pprof/```
+
+# HTTP 웹 서버
+- ```net/http``` 패키지 사용
+
+## HTTP 웹 서버 만들기
+### 1. 핸들러 등록
+```go
+func IndexPathHandler(w http.ResponseWriter, r *http.Request) {
+  ...
+}
+
+http.HandleFunc("/", IndexPathHandler)
+```
+- 각 HTTP 요청 URL 경로에 대응할 수 있는 핸들러 등록
+
+### 2. 웹 서버 시작
+- ```func ListenAndServe(addr string, handler Handler) error``` : 웹 서버 시작
+- addr : HTTP 요청을 수신하는 주소. 일반적으로 ":3000"과 같이 요청을 수신하는 포트 번호 적어줌
+- handler : 핸들러 인스턴스 넣어줌. nil로 넣으면 디폴트 핸들로 실행.
+
+## HTTP 쿼리 파라미터 사용
+```go
+func barHandler(w http.ResponseWriter, r *http.Request) {
+	values := r.URL.Query()
+	name := values.Get("name")
+	id, _ := strconv.Atoi((values.Get("id")))
+	fmt.Fprintf(w, "Hello %s! id: %d", name, id)
+}
+```
+
+## ServeMux 인스턴스 이용하기
+```go
+import (
+	"fmt"
+	"net/http"
+)
+
+func main() {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, "Hello World")
+	})
+
+	mux.HandleFunc("/bar", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, "Hello Bar")
+	})
+
+	http.ListenAndServe(":3000", mux)
+}
+```
+- 새로운 ServeMux 인스턴스를 사용하면 핸들러에 다양한 기능을 추가하기 수월해짐
+- Mux : multiplexer의 약자. 
+  - 여러 입력 중 하나를 선택해서 반환하는 디지털 장치.
+  - router라고도 함
+
+## 파일 서버
+#### "/" 경로에 있는 파일 읽어오기
+```go
+http.Handle("/", http.FileServer(http.Dir("static")))
+```
+
+#### 특정 경로에 있는 파일 읽어오기
+```go
+http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
+```
+
+## 웹 서버 테스트 코드
+```go
+package main
+
+import (
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
+
+func TestIndexHandler(t *testing.T) {
+	assert := assert.New(t)
+	res := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/", nil)
+
+	mux := MakeWebHandler()
+	mux.ServeHTTP(res, req)
+
+	assert.Equal(http.StatusOK, res.Code)
+	data, _ := io.ReadAll(res.Body)
+	assert.Equal("Hello World", string(data))
+}
+```
+
+## JSON 데이터 전송
+- ```encoding/json``` 패키지 사용
+```go
+import (
+	"encoding/json"
+	"fmt"
+	"net/http"
+)
+
+type Student struct {
+	Name  string
+	Age   int
+	Score int
+}
+
+func MakeWebHandler() http.Handler {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/student", StudentHandler)
+	return mux
+}
+
+func StudentHandler(w http.ResponseWriter, r *http.Request) {
+	var student = Student{"aaa", 16, 87}
+	data, _ := json.Marshal(student)
+	w.Header().Add("content-type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprint(w, string(data))
+}
+```
+```go
+import (
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
+
+func TestJsonHandler(t *testing.T) {
+	assert := assert.New(t)
+
+	res := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/student", nil)
+
+	mux := MakeWebHandler()
+	mux.ServeHTTP(res, req)
+
+	assert.Equal(http.StatusOK, res.Code)
+	student := new(Student)
+	err := json.NewDecoder(res.Body).Decode(student)
+	assert.Nil(err)
+	assert.Equal("aaa", student.Name)
+}
+```
+
+## HTTPS 웹 서버 만들기
+### 공개키 암호화 방식
+- 공개키 : 클라이언트에 알려줌
+- 비밀키 : 비공개 상태
+- 클라이언트에서 HTTPS 요청을 보낼 때 공개키로 암호화하고 서버는 비밀키를 이용해 복호화함
+
+### 인증서와 키 생성
+- openssl로 생성 가능
+- But, **개인정보를 수집하고 외부로 공개되는 사이트는 반드시 인증기관을 통해 인증받은 인증서를 사용하도록 법으로 강제**하고 있음
+```go
+err := http.ListenAndServeTLS(":3000", "localhost.crt", "localhost.key", nil)
+```
+- localhost.crt : 공개키
+- localhost.key : 비밀키
